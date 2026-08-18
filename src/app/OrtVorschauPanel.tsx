@@ -3,9 +3,7 @@
 import Link from "next/link"
 import type { SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
-import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { entfernungText, istInReichweite } from "@/lib/reichweite"
-import { ModellBuehne } from "./ModellBuehne"
 import type { SpielerOrt } from "./useSpielerOrt"
 
 export function OrtVorschauPanel({
@@ -18,7 +16,6 @@ export function OrtVorschauPanel({
   onSchliessen: () => void
 }) {
   const foto = fotoFuerSehenswuerdigkeit(eintrag.id)
-  const mesh = meshFuerSehenswuerdigkeit(eintrag.id)
   const reichweite =
     spieler.status === "bereit"
       ? istInReichweite(spieler.lage, eintrag.id)
@@ -44,9 +41,7 @@ export function OrtVorschauPanel({
             Zum Quiz
           </Link>
         </div>
-        {mesh ? (
-          <ModellBuehne mesh={mesh} klasse="mc-modell-karte" />
-        ) : foto ? (
+        {foto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="mc-ort-karte-foto"
