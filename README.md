@@ -4,7 +4,7 @@
 
 You go to a sight, answer the question there, and a correct answer grants a Minecraft resource for that place (Gold at the Zytglogge, a book at the GIBB, usw.).
 
-The world is a 3D block map: loot cubes spawn at each sight. Textures are original 16×16 pixel art (not Mojang assets). Phone layout uses a portrait web-app manifest and a bottom tab bar (Karte / Inventar / Werkbank). There is no public real-world-to-Minecraft tileset for the secret Mapbox token, so the 3D world is built from those blocks. The token stays in `.env.local`.
+The map is Mapbox GL JS: real Bern streets and 3D buildings, painted in a block palette, with Minecraft-styled cubes at each sight (Zytglogge, GIBB, usw.). Textures are original 16×16 pixel art. Phone layout uses a portrait web-app manifest and a bottom tab bar (Karte / Inventar / Werkbank). The Mapbox token stays in `.env.local`.
 
 ## Run
 

@@ -4,8 +4,8 @@ import dynamic from "next/dynamic"
 import type { SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { SehenswuerdigkeitenList } from "./SehenswuerdigkeitenList"
 
-const BernWelt3D = dynamic(
-  () => import("./BernWelt3D").then((modul) => modul.BernWelt3D),
+const BernKarteGl = dynamic(
+  () => import("./BernKarteGl").then((modul) => modul.BernKarteGl),
   { ssr: false, loading: () => <div className="mc-map3d" /> },
 )
 
@@ -21,7 +21,7 @@ export function Spielwelt({
         <h1 className="mc-title">bärngo</h1>
         <p className="mc-tagline">Geh hin. Quiz. Sammle Blöcke.</p>
       </header>
-      <BernWelt3D sehenswuerdigkeiten={sehenswuerdigkeiten} />
+      <BernKarteGl />
       <SehenswuerdigkeitenList sehenswuerdigkeiten={sehenswuerdigkeiten} />
     </main>
   )
