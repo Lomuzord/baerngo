@@ -39,4 +39,58 @@ describe("craft", () => {
     expect(genommen.inventar.goldblock).toBe(1)
     expect(genommen.raster.every((zelle) => zelle === null)).toBe(true)
   })
+
+  it("crafts a pickaxe from the T-shape and refuses the same counts out of shape", () => {
+    const pickelRaster = [
+      "stein",
+      "stein",
+      "stein",
+      null,
+      "holz",
+      null,
+      null,
+      "holz",
+      null,
+    ]
+    expect(ergebnisFuerRaster(pickelRaster)?.id).toBe("pickel")
+    const genommen = nimmCraft({ honig: 1 }, pickelRaster)
+    expect(genommen.ok).toBe(true)
+    if (!genommen.ok) return
+    expect(genommen.ergebnis.id).toBe("pickel")
+    expect(genommen.inventar.pickel).toBe(1)
+    expect(genommen.inventar.honig).toBe(1)
+
+    const falsch = [
+      "stein",
+      "holz",
+      "stein",
+      "holz",
+      "stein",
+      null,
+      null,
+      null,
+      null,
+    ]
+    expect(ergebnisFuerRaster(falsch)).toBeNull()
+    expect(nimmCraft({}, falsch)).toEqual({ ok: false, grund: "Kein Rezept" })
+  })
+
+  it("crafts a sword from the upright blade shape", () => {
+    const schwertRaster = [
+      null,
+      "gold",
+      null,
+      null,
+      "gold",
+      null,
+      null,
+      "holz",
+      null,
+    ]
+    expect(ergebnisFuerRaster(schwertRaster)?.id).toBe("schwert")
+    const genommen = nimmCraft({}, schwertRaster)
+    expect(genommen.ok).toBe(true)
+    if (!genommen.ok) return
+    expect(genommen.ergebnis.id).toBe("schwert")
+  })
 })

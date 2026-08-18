@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { listGegenstaende } from "./gegenstaende"
 import { listSehenswuerdigkeiten } from "./katalog"
 import { ressourceFuerSehenswuerdigkeit } from "./sammeln"
 
@@ -16,5 +17,22 @@ describe("ressourceFuerSehenswuerdigkeit", () => {
       expect(ids.has(ressource!.id)).toBe(false)
       ids.add(ressource!.id)
     }
+  })
+})
+
+describe("placeable catalog", () => {
+  it("lists more placeable materials than the five sight drops", () => {
+    const sichtLoot = listSehenswuerdigkeiten().map(
+      (eintrag) => ressourceFuerSehenswuerdigkeit(eintrag.id)!.id,
+    )
+    const alle = listGegenstaende().map((item) => item.id)
+    expect(sichtLoot).toHaveLength(5)
+    expect(alle.length).toBeGreaterThan(sichtLoot.length)
+    for (const id of sichtLoot) {
+      expect(alle).toContain(id)
+    }
+    expect(alle).toContain("holz")
+    expect(alle).toContain("stein")
+    expect(alle).toContain("pickel")
   })
 })

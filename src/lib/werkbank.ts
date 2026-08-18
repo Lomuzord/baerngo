@@ -1,9 +1,12 @@
 import { gegenstandById, type Gegenstand } from "./gegenstaende"
 
+export type Raster = (string | null)[]
+
 export type Rezept = {
   id: string
   name: string
   zutat: Record<string, number>
+  form?: Raster
   ergebnisId: string
   ergebnisAnzahl: number
 }
@@ -30,6 +33,77 @@ const REZEPTE: readonly Rezept[] = [
     ergebnisId: "bernwappen",
     ergebnisAnzahl: 1,
   },
+  {
+    id: "holz",
+    name: "Holz",
+    zutat: { buch: 1 },
+    ergebnisId: "holz",
+    ergebnisAnzahl: 2,
+  },
+  {
+    id: "stein",
+    name: "Stein",
+    zutat: { sandstein: 2 },
+    ergebnisId: "stein",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "eisen",
+    name: "Eisen",
+    zutat: { gold: 1, sandstein: 1 },
+    ergebnisId: "eisen",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "erde",
+    name: "Erde",
+    zutat: { honig: 1, sandstein: 1 },
+    ergebnisId: "erde",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "ziegel",
+    name: "Ziegel",
+    zutat: { stein: 2 },
+    ergebnisId: "ziegel",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "pickel",
+    name: "Spitzhacke",
+    zutat: { stein: 3, holz: 2 },
+    form: [
+      "stein",
+      "stein",
+      "stein",
+      null,
+      "holz",
+      null,
+      null,
+      "holz",
+      null,
+    ],
+    ergebnisId: "pickel",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "schwert",
+    name: "Schwert",
+    zutat: { gold: 2, holz: 1 },
+    form: [
+      null,
+      "gold",
+      null,
+      null,
+      "gold",
+      null,
+      null,
+      "holz",
+      null,
+    ],
+    ergebnisId: "schwert",
+    ergebnisAnzahl: 1,
+  },
 ]
 
 export type InventarStand = Record<string, number>
@@ -46,8 +120,6 @@ export function rezeptById(id: string): Rezept | undefined {
   return REZEPTE.find((rezept) => rezept.id === id)
 }
 
-export type Raster = (string | null)[]
-
 export function leeresRaster(): Raster {
   return [null, null, null, null, null, null, null, null, null]
 }
@@ -61,14 +133,22 @@ export function zaehleRaster(raster: Raster): Record<string, number> {
   return stand
 }
 
-export function ergebnisFuerRaster(raster: Raster): Gegenstand | null {
+export function rezeptFuerRaster(raster: Raster): Rezept | null {
+  for (const rezept of REZEPTE) {
+    if (rezept.form && passtForm(raster, rezept.form)) return rezept
+  }
   const haben = zaehleRaster(raster)
   for (const rezept of REZEPTE) {
-    if (passtZutaten(haben, rezept.zutat)) {
-      return gegenstandById(rezept.ergebnisId) ?? null
-    }
+    if (rezept.form) continue
+    if (passtZutaten(haben, rezept.zutat)) return rezept
   }
   return null
+}
+
+export function ergebnisFuerRaster(raster: Raster): Gegenstand | null {
+  const rezept = rezeptFuerRaster(raster)
+  if (!rezept) return null
+  return gegenstandById(rezept.ergebnisId) ?? null
 }
 
 export function nimmCraft(
@@ -77,11 +157,19 @@ export function nimmCraft(
 ):
   | { ok: true; inventar: InventarStand; raster: Raster; ergebnis: Gegenstand }
   | { ok: false; grund: string } {
-  const ergebnis = ergebnisFuerRaster(raster)
-  if (!ergebnis) return { ok: false, grund: "Kein Rezept" }
+  const rezept = rezeptFuerRaster(raster)
+  const ergebnis = rezept ? gegenstandById(rezept.ergebnisId) : null
+  if (!rezept || !ergebnis) return { ok: false, grund: "Kein Rezept" }
   const danach = { ...inventar }
-  danach[ergebnis.id] = (danach[ergebnis.id] ?? 0) + 1
+  danach[ergebnis.id] = (danach[ergebnis.id] ?? 0) + rezept.ergebnisAnzahl
   return { ok: true, inventar: danach, raster: leeresRaster(), ergebnis }
+}
+
+function passtForm(raster: Raster, form: Raster): boolean {
+  if (raster.length !== 9 || form.length !== 9) return false
+  if (raster.every((zelle, index) => zelle === form[index])) return true
+  const spiegel = [2, 1, 0, 5, 4, 3, 8, 7, 6].map((index) => form[index] ?? null)
+  return raster.every((zelle, index) => zelle === spiegel[index])
 }
 
 function passtZutaten(

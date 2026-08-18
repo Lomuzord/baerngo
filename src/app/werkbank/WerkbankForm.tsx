@@ -136,7 +136,9 @@ export function WerkbankForm() {
       {gehalten ? (
         <p className="mc-held">In der Hand: {gegenstandById(gehalten.id)?.name}</p>
       ) : (
-        <p className="mc-tagline">2 Gold = Goldblock. Honig + Buch = Honigbrot.</p>
+        <p className="mc-tagline">
+          2 Gold = Goldblock. Buch = Holz. 3 Stein über 2 Holz = Spitzhacke.
+        </p>
       )}
     </section>
   )

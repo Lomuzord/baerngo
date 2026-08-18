@@ -1,6 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  glbFuerGegenstand,
+  kannSceneViewer,
+  modelViewerArModi,
+  sceneViewerUrl,
+} from "@/lib/ar"
 import { gegenstandById } from "@/lib/gegenstaende"
 import { useBauen } from "../useBauen"
 import { useInventar } from "../useInventar"
@@ -13,7 +19,18 @@ export function BauenKamera() {
   const spieler = useSpielerOrt()
   const [wahl, setWahl] = useState<string | null>(null)
   const [kamera, setKamera] = useState<"an" | "aus">("aus")
+  const [ursprung, setUrsprung] = useState("")
   const vorrat = Object.entries(inventar).filter(([, n]) => n > 0)
+  const arGegenstand = wahl ?? bloecke.at(-1)?.gegenstandId ?? "erde"
+  const arGlb = useMemo(() => {
+    if (!ursprung) return ""
+    return new URL(glbFuerGegenstand(arGegenstand), ursprung).toString()
+  }, [arGegenstand, ursprung])
+  const arBereit = kannSceneViewer(ursprung)
+
+  useEffect(() => {
+    setUrsprung(window.location.origin)
+  }, [])
 
   useEffect(() => {
     let stream: MediaStream | undefined
@@ -42,6 +59,12 @@ export function BauenKamera() {
     setzeInventar(danach)
   }
 
+  function oeffneSceneViewer() {
+    if (!arGlb) return
+    const titel = gegenstandById(arGegenstand)?.name ?? arGegenstand
+    window.location.href = sceneViewerUrl(arGlb, titel)
+  }
+
   return (
     <section className="mc-ar">
       <video ref={video} className="mc-ar-video" autoPlay playsInline muted />
@@ -54,7 +77,8 @@ export function BauenKamera() {
           Wähle einen Block und tippe in die Welt.{" "}
           {spieler.status === "bereit"
             ? `${bloecke.length} gesetzt.`
-            : "Standort nötig."}
+            : "Standort nötig."}{" "}
+          ARCore Scene Viewer braucht HTTPS.
         </p>
         <ul className="mc-hotbar">
           {vorrat.map(([id, anzahl]) => {
@@ -86,6 +110,29 @@ export function BauenKamera() {
         >
           Block setzen
         </button>
+        {arBereit ? (
+          <button
+            type="button"
+            className="mc-btn"
+            onClick={oeffneSceneViewer}
+          >
+            In AR zeigen
+          </button>
+        ) : (
+          <p className="mc-tagline">
+            Scene Viewer erst über HTTPS. Kamera+GPS bleibt der Fallback.
+          </p>
+        )}
+        {arGlb ? (
+          <model-viewer
+            src={arGlb}
+            alt={gegenstandById(arGegenstand)?.name ?? "Block"}
+            ar
+            ar-modes={modelViewerArModi()}
+            camera-controls
+            className="mc-ar-model"
+          />
+        ) : null}
       </div>
     </section>
   )
