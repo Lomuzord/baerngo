@@ -159,27 +159,44 @@
 
 .mc-card-link {
   display: block;
-  perspective: 700px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
 }
 
 .mc-card {
-  transform: rotateX(8deg) rotateY(-14deg) translateZ(0);
-  transform-style: preserve-3d;
-  background: #6b4224;
-  border: 4px solid #2a1a10;
-  box-shadow:
-    8px 8px 0 #3d2414,
-    14px 14px 0 #1a100a,
-    18px 18px 0 #0d0805;
-  padding: 1rem 0.75rem 1rem;
-  transition: transform 160ms steps(3);
+  position: relative;
+  transform: none;
+  background: #111;
+  border: 3px solid #111;
+  box-shadow: 6px 6px 0 #ec1c24;
+  padding: 0 0 0.7rem;
+  overflow: hidden;
+  transition: transform 120ms ease;
+}
+
+.mc-card-aktiv {
+  box-shadow: 6px 6px 0 #7cfc00;
+  border-color: #7cfc00;
+}
+
+.mc-card-foto {
+  display: block;
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  object-position: center 20%;
+  filter: contrast(1.05) saturate(0.85);
 }
 
 .mc-card-link:hover .mc-card,
 .mc-card-link:focus-visible .mc-card {
-  transform: rotateX(4deg) rotateY(-6deg) translateY(-4px);
+  transform: translateY(-3px);
 }
 
 .mc-cube {
@@ -189,19 +206,19 @@
 }
 
 .mc-card-title {
-  margin: 0;
+  margin: 0.55rem 0.55rem 0;
   font-family: var(--font-pixel), monospace;
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   line-height: 1.4;
   color: #fff8dc;
-  text-align: center;
+  text-align: left;
 }
 
 .mc-card-loot {
-  margin: 0.4rem 0 0;
-  text-align: center;
-  font-size: 1.15rem;
-  color: #f1c232;
+  margin: 0.25rem 0.55rem 0;
+  text-align: left;
+  font-size: 1.1rem;
+  color: #ec1c24;
 }
 
 .mc-panel {
@@ -211,11 +228,133 @@
     calc(5rem + env(safe-area-inset-bottom));
 }
 
+.mc-map-wrap {
+  position: relative;
+}
+
 .mc-map3d {
   height: min(62dvh, 520px);
   background: #87ceeb;
   border-bottom: 6px solid #1a140f;
   position: relative;
+}
+
+.mc-ort-pin {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 28px;
+  color: #111;
+  pointer-events: none;
+}
+
+.mc-ort-pin-map {
+  background: none;
+  border: 0;
+  padding: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.mc-ort-pin-karte {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  color: #fff;
+  filter: drop-shadow(1px 1px 0 #111);
+}
+
+.mc-ort-pin-raute {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  translate: -50% 0;
+  rotate: 45deg;
+  border: 3px solid currentColor;
+  background: #111;
+}
+
+.mc-ort-pin-stiel {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 3px;
+  height: 10px;
+  translate: -50% 0;
+  background: currentColor;
+}
+
+.mc-ort-pin-aktiv,
+.mc-ort-pin-map.mc-ort-pin-aktiv {
+  color: #ec1c24;
+}
+
+.mc-ort-pin-aktiv .mc-ort-pin-raute {
+  background: #ec1c24;
+}
+
+.mc-ort-karte {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 10px;
+  z-index: 6;
+  background: #111;
+  color: #f4f0d8;
+  border: 3px solid #111;
+  box-shadow: 6px 6px 0 #ec1c24;
+  padding: 0.7rem;
+}
+
+.mc-ort-karte-zeile {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.mc-ort-karte-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-ort-karte-titel {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #fff8dc;
+}
+
+.mc-ort-karte-distanz {
+  margin: 0.4rem 0 0.7rem;
+  font-size: 1.25rem;
+  color: #ec1c24;
+}
+
+.mc-ort-karte-foto {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  object-position: center 20%;
+  flex: none;
+  border: 2px solid #fff;
+}
+
+.mc-ort-karte-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.mc-ort-karte-zu {
+  margin-top: 0.55rem;
+  background: none;
+  border: 0;
+  color: #d7c39a;
+  font-size: 1rem;
+  padding: 0;
 }
 
 .mc-mapbox-canvas {

@@ -19,6 +19,12 @@ export function distanzMeter(von: Lage, nach: Lage): number {
   return 2 * ERDE_RADIUS_METER * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+export function entfernungText(distanzMeter: number): string {
+  if (!Number.isFinite(distanzMeter)) return "unbekannt"
+  if (distanzMeter < 1000) return `${Math.round(distanzMeter)} m`
+  return `${(distanzMeter / 1000).toFixed(1)} km`
+}
+
 export function istInReichweite(
   spieler: Lage | null,
   sehenswuerdigkeitId: string,

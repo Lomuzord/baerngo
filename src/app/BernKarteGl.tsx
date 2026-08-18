@@ -6,16 +6,28 @@ import "mapbox-gl/dist/mapbox-gl.css"
 import { BERN_KARTE, kameraFuerSpieler, SPIELER_KAMERA } from "@/lib/karte"
 import { applyMinecraftLook, MINECRAFT_GEBAEUDE } from "@/lib/minecraftStyle"
 import { gegenstandById } from "@/lib/gegenstaende"
-import { listSichtModelle, type SichtModell } from "@/lib/platzierung"
+import { listSichtModelle, sichtModellById, type SichtModell } from "@/lib/platzierung"
 import { useBauen } from "./useBauen"
 import { useSpielerOrt } from "./useSpielerOrt"
 
-export function BernKarteGl() {
+export function BernKarteGl({
+  gewaehltId,
+  onWaehle,
+}: {
+  gewaehltId: string | null
+  onWaehle: (id: string | null) => void
+}) {
   const kasten = useRef<HTMLDivElement>(null)
   const karte = useRef<mapboxgl.Map | null>(null)
   const spielerMarker = useRef<mapboxgl.Marker | null>(null)
   const gebaute = useRef<mapboxgl.Marker[]>([])
+  const pins = useRef<Map<string, HTMLElement>>(new Map())
   const hatZentriert = useRef(false)
+  const onWaehleRef = useRef(onWaehle)
+  onWaehleRef.current = onWaehle
+  const gewaehltRef = useRef(gewaehltId)
+  gewaehltRef.current = gewaehltId
+  const pinKlick = useRef(false)
   const { bloecke } = useBauen()
   const spieler = useSpielerOrt()
   const spielerRef = useRef(spieler)
@@ -64,16 +76,29 @@ export function BernKarteGl() {
         if (!map.getLayer("minecraft-buildings")) {
           map.addLayer(MINECRAFT_GEBAEUDE)
         }
+        pins.current.clear()
         for (const modell of listSichtModelle()) {
-          new mapboxgl.Marker({
-            element: truheElement(modell),
-            anchor: "bottom",
+          const el = pinElement(modell, (id) => {
+            pinKlick.current = true
+            onWaehleRef.current(id)
           })
+          if (modell.id === gewaehltRef.current) {
+            el.classList.add("mc-ort-pin-aktiv")
+          }
+          pins.current.set(modell.id, el)
+          new mapboxgl.Marker({ element: el, anchor: "bottom" })
             .setLngLat([modell.lage.lng, modell.lage.lat])
             .addTo(map)
         }
+        map.on("click", () => {
+          if (pinKlick.current) {
+            pinKlick.current = false
+            return
+          }
+          onWaehleRef.current(null)
+        })
         setzeSpielerMarker(map, spielerMarker, spielerRef.current)
-        if (spielerRef.current.status === "bereit") {
+        if (spielerRef.current.status === "bereit" && !gewaehltRef.current) {
           map.jumpTo(kameraFuerSpieler(spielerRef.current.lage))
           hatZentriert.current = true
         }
@@ -129,6 +154,24 @@ export function BernKarteGl() {
     }
   }, [spieler])
 
+  useEffect(() => {
+    pins.current.forEach((el, id) => {
+      el.classList.toggle("mc-ort-pin-aktiv", id === gewaehltId)
+    })
+    const map = karte.current
+    const modell = gewaehltId ? sichtModellById(gewaehltId) : undefined
+    if (!map || !modell) return
+    const geheHin = () => {
+      map.easeTo({
+        center: [modell.lage.lng, modell.lage.lat],
+        zoom: Math.max(map.getZoom(), SPIELER_KAMERA.zoom),
+        duration: 500,
+      })
+    }
+    if (map.loaded()) geheHin()
+    else map.once("load", geheHin)
+  }, [gewaehltId])
+
   function zentriereAufMich() {
     const map = karte.current
     if (!map || spieler.status !== "bereit") return
@@ -171,33 +214,23 @@ export function BernKarteGl() {
   )
 }
 
-function truheElement(modell: SichtModell) {
-  const root = document.createElement("div")
-  root.className = "mc-gl-marker"
+function pinElement(
+  modell: SichtModell,
+  onWaehle: (id: string) => void,
+) {
+  const root = document.createElement("button")
+  root.type = "button"
+  root.className = "mc-ort-pin mc-ort-pin-map"
   root.dataset.sight = modell.id
   root.dataset.modell = modell.modellId
+  root.setAttribute("aria-label", modell.name)
   root.innerHTML = `
-    <a href="/sehenswuerdigkeiten/${modell.id}" aria-label="${modell.name}">
-      <span class="mc-truhe mc-truhe-karte">
-        <span class="mc-truhe-scene">
-          <span class="mc-truhe-deckel">
-            <span class="mc-face mc-face-front"></span>
-            <span class="mc-face mc-face-side"></span>
-            <span class="mc-face mc-face-top"></span>
-          </span>
-          <span class="mc-truhe-korpus">
-            <span class="mc-face mc-face-front"></span>
-            <span class="mc-face mc-face-side"></span>
-            <span class="mc-face mc-face-top"></span>
-          </span>
-          <span class="mc-truhe-riegel"></span>
-        </span>
-      </span>
-      <span class="mc-gl-label">${modell.name}</span>
-    </a>
+    <span class="mc-ort-pin-raute"></span>
+    <span class="mc-ort-pin-stiel"></span>
   `
-  root.querySelector("a")?.addEventListener("click", (event) => {
+  root.addEventListener("click", (event) => {
     event.stopPropagation()
+    onWaehle(modell.id)
   })
   return root
 }
