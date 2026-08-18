@@ -1,7 +1,7 @@
-import type { CSSProperties } from "react"
 import Link from "next/link"
 import type { SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { ressourceFuerSehenswuerdigkeit } from "@/lib/sammeln"
+import { TruheFigur } from "./TruheFigur"
 
 export function SehenswuerdigkeitKarte3D({
   eintrag,
@@ -17,17 +17,7 @@ export function SehenswuerdigkeitKarte3D({
       aria-label={eintrag.name}
     >
       <article className="mc-card">
-        <div
-          className="mc-cube"
-          style={
-            {
-              "--block": "#8b5a2b",
-              backgroundImage: ressource
-                ? `url(${ressource.textur})`
-                : undefined,
-            } as CSSProperties
-          }
-        />
+        <TruheFigur klasse="mc-truhe-karte" />
         <h2 className="mc-card-title">{eintrag.name}</h2>
         <p className="mc-card-loot">{ressource?.name ?? "???"}</p>
       </article>

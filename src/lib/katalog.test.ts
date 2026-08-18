@@ -12,7 +12,10 @@ describe("listSehenswuerdigkeiten", () => {
     expect(zytglogge?.quiz.frage.length).toBeGreaterThan(0)
     expect(zytglogge?.quiz.optionen.length).toBeGreaterThan(1)
 
-    expect(katalog.some((eintrag) => eintrag.id === "gibb")).toBe(true)
+    const gibb = katalog.find((eintrag) => eintrag.id === "gibb")
+    expect(gibb?.name).toBe("GIBB Bern")
+    expect(gibb?.quiz.frage).toMatch(/GIBB Bern/)
+    expect(gibb?.quiz.optionen.length).toBeGreaterThan(1)
 
     const weitere = katalog.filter((eintrag) => eintrag.id !== zytglogge?.id)
     expect(weitere.length).toBeGreaterThanOrEqual(2)

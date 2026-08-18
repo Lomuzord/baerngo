@@ -165,14 +165,15 @@
 }
 
 .mc-card {
-  transform: rotateX(10deg) rotateY(-16deg);
+  transform: rotateX(8deg) rotateY(-14deg) translateZ(0);
   transform-style: preserve-3d;
-  background: #8b5a2b;
-  border: 4px solid #3d2b1f;
+  background: #6b4224;
+  border: 4px solid #2a1a10;
   box-shadow:
-    10px 10px 0 #2b1b12,
-    14px 14px 0 #1a100a;
-  padding: 0.75rem 0.75rem 1rem;
+    8px 8px 0 #3d2414,
+    14px 14px 0 #1a100a,
+    18px 18px 0 #0d0805;
+  padding: 1rem 0.75rem 1rem;
   transition: transform 160ms steps(3);
 }
 
@@ -185,13 +186,6 @@
   width: 56px;
   height: 56px;
   margin: 0 auto 0.6rem;
-  background-color: var(--block);
-  background-size: 100% 100%;
-  image-rendering: pixelated;
-  box-shadow:
-    10px 0 0 color-mix(in srgb, var(--block) 70%, #000),
-    0 10px 0 color-mix(in srgb, var(--block) 55%, #000);
-  transform: rotateX(18deg) rotateZ(-18deg);
 }
 
 .mc-card-title {
@@ -229,6 +223,11 @@
   height: 100%;
 }
 
+.mc-gl-marker {
+  overflow: visible;
+  perspective: 220px;
+}
+
 .mc-gl-marker a {
   display: flex;
   flex-direction: column;
@@ -237,87 +236,286 @@
   color: #fff8dc;
 }
 
-.mc-gl-cube {
-  width: 28px;
-  height: 28px;
-  background-size: 100% 100%;
-  image-rendering: pixelated;
-  transform: rotateX(18deg) rotateZ(-18deg);
-  box-shadow: 6px 6px 0 #1a100a;
-}
-
 .mc-gl-label {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 0.7rem;
   text-shadow: 1px 1px 0 #000;
 }
 
-.mc-you {
+.mc-iso,
+.mc-truhe-scene {
+  --s: 36px;
   position: relative;
-  width: 56px;
-  height: 56px;
-  pointer-events: none;
+  display: block;
+  width: var(--s);
+  height: var(--s);
+  transform: rotateX(-26deg) rotateY(36deg);
+  transform-style: preserve-3d;
 }
 
-.mc-you-pulse {
+.mc-iso {
+  margin: 0.4rem auto 0.7rem;
+}
+
+.mc-iso-klein {
+  --s: 28px;
+  margin: 0;
+}
+
+.mc-iso-spieler {
+  --s: 22px;
+  margin: 0 auto;
+}
+
+.mc-iso-spieler .mc-face-front {
+  background: #3d91e0;
+}
+
+.mc-iso-spieler .mc-face-side {
+  background: #245f96;
+}
+
+.mc-iso-spieler .mc-face-top {
+  background: #c68642;
+}
+
+.mc-face {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background: rgba(48, 180, 255, 0.35);
-  animation: mc-you-pulse 1.4s ease-out infinite;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  backface-visibility: hidden;
 }
 
-.mc-you-dot {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 22px;
-  height: 22px;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: #1ec8ff;
-  border: 4px solid #fff;
-  box-shadow: 0 0 0 3px #00334d, 0 0 16px #1ec8ff;
+.mc-face-front {
+  transform: translateZ(calc(var(--s) / 2));
+  filter: brightness(0.95);
 }
 
-.mc-you-label {
+.mc-face-side {
+  transform: rotateY(90deg) translateZ(calc(var(--s) / 2));
+  filter: brightness(0.72);
+}
+
+.mc-face-top {
+  transform: rotateX(90deg) translateZ(calc(var(--s) / 2));
+  filter: brightness(1.08);
+}
+
+.mc-truhe {
+  display: block;
+  perspective: 280px;
+  width: 64px;
+  height: 58px;
+  margin: 0 auto 0.4rem;
+}
+
+.mc-truhe-karte {
+  width: 52px;
+  height: 50px;
+}
+
+.mc-truhe-gross {
+  width: 112px;
+  height: 108px;
+  perspective: 420px;
+}
+
+.mc-truhe-scene {
+  --s: 40px;
+  margin: 10px auto 0;
+}
+
+.mc-truhe-karte .mc-truhe-scene {
+  --s: 32px;
+  margin: 8px auto 0;
+}
+
+.mc-truhe-gross .mc-truhe-scene {
+  --s: 72px;
+  margin: 16px auto 0;
+}
+
+.mc-truhe-korpus,
+.mc-truhe-deckel {
+  position: absolute;
+  left: 0;
+  width: var(--s);
+  transform-style: preserve-3d;
+}
+
+.mc-truhe-korpus {
+  height: calc(var(--s) * 0.62);
+  top: calc(var(--s) * 0.38);
+}
+
+.mc-truhe-deckel {
+  height: calc(var(--s) * 0.34);
+  top: calc(var(--s) * 0.06);
+  transform-origin: 50% 100%;
+  transition: transform 280ms ease;
+}
+
+.mc-truhe-korpus .mc-face,
+.mc-truhe-deckel .mc-face {
+  background-color: #b56a2b;
+  box-shadow: inset 0 0 0 1px #5a301066;
+}
+
+.mc-truhe-korpus .mc-face-front {
+  background:
+    linear-gradient(#0000 42%, #5a3010 42% 50%, #0000 50%),
+    #c17632;
+}
+
+.mc-truhe-korpus .mc-face-side {
+  background: #8a4b1a;
+}
+
+.mc-truhe-korpus .mc-face-top {
+  background: #6b3a14;
+}
+
+.mc-truhe-deckel .mc-face-front {
+  background: #d4893a;
+}
+
+.mc-truhe-deckel .mc-face-side {
+  background: #9a5520;
+}
+
+.mc-truhe-deckel .mc-face-top {
+  background: #e0a056;
+}
+
+.mc-truhe-riegel {
   position: absolute;
   left: 50%;
-  top: 100%;
-  translate: -50% 2px;
-  font-family: var(--font-pixel), monospace;
-  font-size: 0.7rem;
+  top: 58%;
+  width: 18%;
+  height: 22%;
+  translate: -50% 0;
+  background: #e6c34a;
+  border: 1px solid #8a6a12;
+  box-shadow: 2px 2px 0 #5a3010;
+  transform: translateZ(calc(var(--s) / 2 + 2px));
+}
+
+.mc-truhe-offen .mc-truhe-deckel {
+  transform: translateY(-4%) rotateX(-118deg);
+}
+
+.mc-truhe-offen .mc-truhe-riegel {
+  opacity: 0;
+}
+
+.mc-truhe-bereit .mc-truhe-scene {
+  animation: mc-truhe-bob 1.15s ease-in-out infinite;
+}
+
+.mc-truhe-btn {
+  position: relative;
+  display: block;
+  margin: 1rem auto 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mc-truhe-btn:disabled {
+  cursor: default;
+}
+
+.mc-loot {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.mc-loot-item {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  translate: -50% 0;
+  perspective: 240px;
+  animation: mc-loot-pop 360ms ease-out both;
+}
+
+@keyframes mc-truhe-bob {
+  0%,
+  100% {
+    transform: rotateX(-26deg) rotateY(36deg) translateY(0);
+  }
+  50% {
+    transform: rotateX(-26deg) rotateY(36deg) translateY(-7px);
+  }
+}
+
+@keyframes mc-loot-pop {
+  from {
+    transform: translateY(12px) scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.mc-spieler {
+  position: relative;
+  width: 36px;
+  height: 40px;
+  pointer-events: none;
+  perspective: 200px;
+}
+
+.mc-spieler::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 26px;
+  height: 8px;
+  translate: -50% 3px;
+  background: #0005;
+  border-radius: 50%;
+}
+
+.mc-ort-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  min-width: 52px;
+  background: #727272;
   color: #fff;
-  background: #00334d;
-  padding: 2px 6px;
-  border: 2px solid #fff;
-  text-shadow: none;
+  border: 3px solid #000;
+  box-shadow: inset -2px -2px 0 #3f3f3f, inset 2px 2px 0 #fff;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.5rem;
+  padding: 0.45rem 0.4rem;
 }
 
-.mc-you-hud {
+.mc-ort-btn:disabled {
+  opacity: 0.45;
+}
+
+.mc-ort-status {
   position: absolute;
   left: 8px;
-  right: 8px;
+  right: 70px;
   bottom: 8px;
   z-index: 5;
   margin: 0;
-  padding: 6px 8px;
-  background: #00334dee;
-  color: #fff;
-  font-size: 1.05rem;
-  border: 2px solid #1ec8ff;
+  padding: 4px 8px;
+  background: #2b2118ee;
+  color: #d7c39a;
+  font-size: 1rem;
+  border: 2px solid #1a140f;
   pointer-events: none;
-}
-
-@keyframes mc-you-pulse {
-  0% {
-    transform: scale(0.55);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.7);
-    opacity: 0;
-  }
 }
 
 .mc-tabs {

@@ -20,6 +20,8 @@ describe("bewerteAntwort", () => {
         "Die gewerblich-industrielle Berufsfachschule Bern",
       ).korrekt,
     ).toBe(true)
-    expect(bewerteAntwort("gibb", "Das Berner Rathaus").korrekt).toBe(false)
+    expect(
+      bewerteAntwort("gibb", "Das Bundeshaus der Bundesversammlung").korrekt,
+    ).toBe(false)
   })
 })

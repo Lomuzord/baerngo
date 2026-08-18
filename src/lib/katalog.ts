@@ -88,15 +88,15 @@ const KATALOG: readonly Sehenswuerdigkeit[] = [
   },
   {
     id: "gibb",
-    name: "GIBB",
-    alias: ["gibb Berufsfachschule Bern"],
+    name: "GIBB Bern",
+    alias: ["gibb", "Berufsfachschule Bern", "Lorrainestrasse"],
     lage: { lat: 46.9546, lng: 7.44467 },
     quiz: {
-      frage: "Was ist die GIBB?",
+      frage: "An der Lorrainestrasse steht die GIBB Bern. Was ist das?",
       optionen: [
         "Die gewerblich-industrielle Berufsfachschule Bern",
-        "Das Berner Rathaus",
-        "Ein Bärengehege",
+        "Das Bundeshaus der Bundesversammlung",
+        "Der Bärengraben",
       ],
       richtigeAntwort: "Die gewerblich-industrielle Berufsfachschule Bern",
     },

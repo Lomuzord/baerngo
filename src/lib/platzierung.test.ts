@@ -17,7 +17,7 @@ describe("sichtModellById", () => {
   it("assigns a Minecraft block model at real Bern coordinates for GIBB", () => {
     const modell = sichtModellById("gibb")
     expect(modell).toBeDefined()
-    expect(modell!.name).toBe("GIBB")
+    expect(modell!.name).toBe("GIBB Bern")
     expect(modell!.modellId).toBe("mc-block-gibb")
     expect(modell!.lage.lat).toBeGreaterThan(46.95)
     expect(modell!.lage.lng).toBeGreaterThan(7.44)

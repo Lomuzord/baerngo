@@ -19,7 +19,7 @@ export function Spielwelt({
       <header className="mc-header">
         <p className="mc-kicker">Bern</p>
         <h1 className="mc-title">bärngo</h1>
-        <p className="mc-tagline">Geh hin. Quiz. Sammle Blöcke.</p>
+        <p className="mc-tagline">Geh hin. Quiz. Öffne die Truhe.</p>
       </header>
       <BernKarteGl />
       <SehenswuerdigkeitenList sehenswuerdigkeiten={sehenswuerdigkeiten} />

@@ -36,7 +36,12 @@ describe("submitAntwort", () => {
       lat,
       lng,
     )
-    const falsch = await submitAntwort("gibb", "Das Berner Rathaus", lat, lng)
+    const falsch = await submitAntwort(
+      "gibb",
+      "Das Bundeshaus der Bundesversammlung",
+      lat,
+      lng,
+    )
 
     expect(richtig).toEqual({ art: "bewertet", korrekt: true })
     expect(falsch).toEqual({ art: "bewertet", korrekt: false })

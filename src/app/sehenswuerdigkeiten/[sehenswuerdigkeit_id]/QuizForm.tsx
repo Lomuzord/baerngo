@@ -2,8 +2,6 @@
 
 import { useState } from "react"
 import type { QuizOhneLoesung } from "@/lib/katalog"
-import { ressourceFuerSehenswuerdigkeit } from "@/lib/sammeln"
-import { useInventar } from "../../useInventar"
 import { submitAntwort, type SpielErgebnis } from "./actions"
 
 export function QuizForm({
@@ -11,16 +9,16 @@ export function QuizForm({
   quiz,
   lat,
   lng,
+  onKorrekt,
 }: {
   sehenswuerdigkeitId: string
   quiz: QuizOhneLoesung
   lat: number
   lng: number
+  onKorrekt: () => void
 }) {
   const [ergebnis, setErgebnis] = useState<SpielErgebnis | null>(null)
   const [pending, setPending] = useState(false)
-  const { sammle } = useInventar()
-  const ressource = ressourceFuerSehenswuerdigkeit(sehenswuerdigkeitId)
 
   async function onSubmit(formData: FormData) {
     const antwort = String(formData.get("antwort") ?? "")
@@ -33,8 +31,8 @@ export function QuizForm({
         lng,
       )
       setErgebnis(danach)
-      if (danach.art === "bewertet" && danach.korrekt && ressource) {
-        sammle(ressource.id)
+      if (danach.art === "bewertet" && danach.korrekt) {
+        onKorrekt()
       }
     } finally {
       setPending(false)
@@ -55,30 +53,17 @@ export function QuizForm({
       <button type="submit" disabled={pending} className="mc-btn">
         Antwort prüfen
       </button>
-      {ergebnis ? (
-        <ErgebnisPanel ergebnis={ergebnis} ressourceName={ressource?.name} />
-      ) : null}
+      {ergebnis ? <ErgebnisPanel ergebnis={ergebnis} /> : null}
     </form>
   )
 }
 
-function ErgebnisPanel({
-  ergebnis,
-  ressourceName,
-}: {
-  ergebnis: SpielErgebnis
-  ressourceName?: string
-}) {
+function ErgebnisPanel({ ergebnis }: { ergebnis: SpielErgebnis }) {
   if (ergebnis.art === "zu-weit") {
     return <p>Noch {Math.round(ergebnis.distanzMeter)} m. Geh näher hin.</p>
   }
   if (!ergebnis.korrekt) {
     return <p>Leider falsch.</p>
   }
-  return (
-    <p>
-      Richtig.
-      {ressourceName ? ` +1 ${ressourceName}` : ""}
-    </p>
-  )
+  return <p>Richtig. Die Truhe ist bereit.</p>
 }

@@ -16,6 +16,28 @@ export const BERN_KARTE: Kartenrahmen = {
   height: 480,
 }
 
+export const SPIELER_KAMERA = {
+  zoom: 16.8,
+  pitch: 58,
+  bearing: -18,
+  minZoom: 14,
+  maxZoom: 18,
+} as const
+
+export function kameraFuerSpieler(lage: Lage): {
+  center: [number, number]
+  zoom: number
+  pitch: number
+  bearing: number
+} {
+  return {
+    center: [lage.lng, lage.lat],
+    zoom: SPIELER_KAMERA.zoom,
+    pitch: SPIELER_KAMERA.pitch,
+    bearing: SPIELER_KAMERA.bearing,
+  }
+}
+
 export type Pixel = {
   x: number
   y: number

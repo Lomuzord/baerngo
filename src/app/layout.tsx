@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "bärngo",
   description:
-    "Geh zu Sehenswürdigkeiten in Bern, löse das Quiz und sammle Minecraft-Ressourcen.",
+    "Geh zu Orten in Bern, löse das Quiz und öffne die Truhe.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
