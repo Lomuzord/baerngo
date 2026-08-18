@@ -3,27 +3,23 @@ import { bewerteAntwort } from "./bewertung"
 import { sehenswuerdigkeitById } from "./katalog"
 
 describe("bewerteAntwort", () => {
-  it("marks the matching Zytglogge answer correct and a non-matching one incorrect", () => {
-    const zytglogge = sehenswuerdigkeitById("zytglogge")
-    expect(zytglogge).toBeDefined()
-    const richtig = zytglogge!.quiz.richtigeAntwort
-    const falsch =
-      zytglogge!.quiz.optionen.find((option) => option !== richtig) ??
-      "keine Uhr"
-
-    expect(bewerteAntwort("zytglogge", richtig).korrekt).toBe(true)
-    expect(bewerteAntwort("zytglogge", falsch).korrekt).toBe(false)
+  it("marks a matching Zytglogge answer correct and a non-matching one incorrect", () => {
+    expect(
+      bewerteAntwort("zytglogge", "Astronomische Uhr und Glockenspiel").korrekt,
+    ).toBe(true)
+    expect(
+      bewerteAntwort("zytglogge", "Der höchste Turm der Schweiz").korrekt,
+    ).toBe(false)
+    expect(sehenswuerdigkeitById("zytglogge")?.name).toMatch(/Zytglogge/)
   })
 
-  it("marks the matching Bundeshaus answer correct and a non-matching one incorrect", () => {
-    const bundeshaus = sehenswuerdigkeitById("bundeshaus")
-    expect(bundeshaus).toBeDefined()
-    const richtig = bundeshaus!.quiz.richtigeAntwort
-    const falsch =
-      bundeshaus!.quiz.optionen.find((option) => option !== richtig) ??
-      "Stadtbär"
-
-    expect(bewerteAntwort("bundeshaus", richtig).korrekt).toBe(true)
-    expect(bewerteAntwort("bundeshaus", falsch).korrekt).toBe(false)
+  it("marks a matching Bundeshaus answer correct and a non-matching one incorrect", () => {
+    expect(
+      bewerteAntwort("bundeshaus", "Bundesrat und Parlament tagen dort")
+        .korrekt,
+    ).toBe(true)
+    expect(
+      bewerteAntwort("bundeshaus", "Dort wohnt der Stadtbär").korrekt,
+    ).toBe(false)
   })
 })
