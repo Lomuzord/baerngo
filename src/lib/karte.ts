@@ -1,0 +1,48 @@
+import type { Lage } from "./katalog"
+
+export type Kartenrahmen = {
+  lat: number
+  lng: number
+  zoom: number
+  width: number
+  height: number
+}
+
+export const BERN_KARTE: Kartenrahmen = {
+  lat: 46.9476,
+  lng: 7.451,
+  zoom: 15,
+  width: 1280,
+  height: 900,
+}
+
+export type Pixel = {
+  x: number
+  y: number
+}
+
+export function pixelFuerLage(lage: Lage, rahmen: Kartenrahmen): Pixel {
+  const welt = 256 * 2 ** rahmen.zoom
+  const mitte = projektion(rahmen.lng, rahmen.lat)
+  const punkt = projektion(lage.lng, lage.lat)
+  return {
+    x: rahmen.width / 2 + (punkt.x - mitte.x) * welt,
+    y: rahmen.height / 2 + (punkt.y - mitte.y) * welt,
+  }
+}
+
+export function liegtAufKarte(pixel: Pixel, rahmen: Kartenrahmen): boolean {
+  return (
+    pixel.x >= 0 &&
+    pixel.y >= 0 &&
+    pixel.x <= rahmen.width &&
+    pixel.y <= rahmen.height
+  )
+}
+
+function projektion(lng: number, lat: number): Pixel {
+  const x = (lng + 180) / 360
+  const sinLat = Math.sin((lat * Math.PI) / 180)
+  const y = 0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)
+  return { x, y }
+}

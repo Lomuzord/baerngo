@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-archivo);
+  --font-display: var(--font-archivo-black);
+  --color-background: #0c0b0a;
+  --color-foreground: #f5f0ea;
+}
+
+html,
+body {
+  background: #0c0b0a;
+  color: #f5f0ea;
+  min-height: 100%;
+}
