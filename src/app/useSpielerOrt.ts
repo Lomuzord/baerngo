@@ -5,7 +5,7 @@ import type { Lage } from "@/lib/katalog"
 
 export type SpielerOrt =
   | { status: "suche" }
-  | { status: "bereit"; lage: Lage }
+  | { status: "bereit"; lage: Lage; genauigkeit?: number }
   | { status: "verweigert" }
   | { status: "fehler" }
 
@@ -26,6 +26,7 @@ export function useSpielerOrt(): SpielerOrt {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           },
+          genauigkeit: position.coords.accuracy,
         })
       },
       (error) => {
