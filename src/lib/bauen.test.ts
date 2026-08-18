@@ -27,7 +27,7 @@ describe("neuerBlock", () => {
 })
 
 describe("entferneBlock", () => {
-  it("mines only with a pickaxe and returns the remaining placed blocks", () => {
+  it("removes a placed block from the world list", () => {
     expect(istAbbauWerkzeug("pickel")).toBe(true)
     expect(istAbbauWerkzeug("gold")).toBe(false)
     expect(hatAbbauWerkzeug({ pickel: 1, gold: 2 })).toBe(true)

@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
+  nutzePickel,
+  schlageBlock,
+  type AbbauStand,
+} from "@/lib/abbauen"
+import {
   glbFuerGegenstand,
   kannSceneViewer,
   modelViewerArModi,
@@ -9,8 +14,10 @@ import {
 } from "@/lib/ar"
 import { hatAbbauWerkzeug } from "@/lib/bauen"
 import { gegenstandById } from "@/lib/gegenstaende"
+import { hotbarSlots } from "@/lib/hotbar"
 import { useBauen } from "../useBauen"
 import { useInventar } from "../useInventar"
+import { usePickel } from "../usePickel"
 import { useSpielerOrt } from "../useSpielerOrt"
 import { starteBauenAr } from "./starteBauenAr"
 
@@ -21,26 +28,30 @@ export function BauenKamera() {
   const { inventar, setzeInventar } = useInventar()
   const { bloecke, setze, nimmWeg } = useBauen()
   const spieler = useSpielerOrt()
+  const { haltbarkeit, setzeHaltbarkeit, maximum } = usePickel()
   const [wahl, setWahl] = useState<string | null>(null)
   const [kamera, setKamera] = useState<"an" | "aus">("aus")
   const [ursprung, setUrsprung] = useState("")
   const [arStatus, setArStatus] = useState<"aus" | "an" | "fehlt">("aus")
   const [hinweis, setHinweis] = useState<string | null>(null)
-  const vorrat = Object.entries(inventar).filter(([, n]) => n > 0)
-  const arGegenstand = wahl ?? bloecke.at(-1)?.gegenstandId ?? "erde"
+  const [abbau, setAbbau] = useState<AbbauStand>({})
+  const abbauRef = useRef(abbau)
+  abbauRef.current = abbau
+  const slots = hotbarSlots(inventar)
+  const arGegenstand = wahl && wahl !== "pickel" ? wahl : "erde"
   const arGlb = useMemo(() => {
     if (!ursprung) return ""
     return new URL(glbFuerGegenstand(arGegenstand), ursprung).toString()
   }, [arGegenstand, ursprung])
   const sceneViewerBereit = kannSceneViewer(ursprung)
-  const pickelBereit = hatAbbauWerkzeug(inventar)
   const steuerung = useRef({
     wahl: () => wahl,
-    kannSetzen: () => Boolean(wahl && (inventar[wahl] ?? 0) > 0),
-    kannAbbauen: () => hatAbbauWerkzeug(inventar),
+    kannSetzen: () => Boolean(wahl && wahl !== "pickel" && (inventar[wahl] ?? 0) > 0),
+    werkzeug: () =>
+      wahl === "pickel" && hatAbbauWerkzeug(inventar) ? "pickel" : null,
     bloecke: () => bloecke,
     aufSetzen: (_pose: { x: number; y: number; z: number }) => {},
-    aufAbbauen: (_id: string) => {},
+    aufSchlag: (_id: string) => false,
   })
 
   useEffect(() => {
@@ -50,11 +61,12 @@ export function BauenKamera() {
   useEffect(() => {
     steuerung.current.wahl = () => wahl
     steuerung.current.kannSetzen = () =>
-      Boolean(wahl && (inventar[wahl] ?? 0) > 0)
-    steuerung.current.kannAbbauen = () => hatAbbauWerkzeug(inventar)
+      Boolean(wahl && wahl !== "pickel" && (inventar[wahl] ?? 0) > 0)
+    steuerung.current.werkzeug = () =>
+      wahl === "pickel" && hatAbbauWerkzeug(inventar) ? "pickel" : null
     steuerung.current.bloecke = () => bloecke
     steuerung.current.aufSetzen = (pose) => {
-      if (!wahl || (inventar[wahl] ?? 0) < 1) return
+      if (!wahl || wahl === "pickel" || (inventar[wahl] ?? 0) < 1) return
       const lat = spieler.status === "bereit" ? spieler.lage.lat : 0
       const lng = spieler.status === "bereit" ? spieler.lage.lng : 0
       setze(wahl, lat, lng, pose)
@@ -62,17 +74,38 @@ export function BauenKamera() {
       if (danach[wahl] <= 0) delete danach[wahl]
       setzeInventar(danach)
     }
-    steuerung.current.aufAbbauen = (blockId) => {
-      if (!hatAbbauWerkzeug(inventar)) return
-      const weg = bloecke.find((block) => block.id === blockId)
-      if (!weg) return
-      nimmWeg(blockId)
-      setzeInventar({
-        ...inventar,
-        [weg.gegenstandId]: (inventar[weg.gegenstandId] ?? 0) + 1,
-      })
+    steuerung.current.aufSchlag = (blockId) =>
+      schlageGesetzt(blockId, steuerung.current.werkzeug())
+  })
+
+  function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {
+    const weg = bloecke.find((block) => block.id === blockId)
+    if (!weg) return false
+    const schlag = schlageBlock(abbauRef.current, blockId, werkzeug)
+    setAbbau(schlag.stand)
+    if (!schlag.zerstoert) {
+      setHinweis(
+        werkzeug === "pickel"
+          ? "Spitzhacke: fast weg."
+          : `Hand: ${schlag.treffer}/${schlag.braucht}`,
+      )
+      return false
     }
-  }, [wahl, inventar, bloecke, spieler, setze, nimmWeg, setzeInventar])
+    nimmWeg(blockId)
+    let nextInv = {
+      ...inventar,
+      [weg.gegenstandId]: (inventar[weg.gegenstandId] ?? 0) + 1,
+    }
+    if (werkzeug === "pickel") {
+      const bar = haltbarkeit > 0 ? haltbarkeit : maximum
+      const nutzung = nutzePickel(nextInv, bar)
+      nextInv = nutzung.inventar
+      setzeHaltbarkeit(nutzung.haltbarkeit)
+      if (nutzung.zerbrochen) setHinweis("Die Spitzhacke ist zerbrochen.")
+    }
+    setzeInventar(nextInv)
+    return true
+  }
 
   useEffect(() => {
     let stream: MediaStream | undefined
@@ -95,27 +128,13 @@ export function BauenKamera() {
   }, [])
 
   function platziereGps() {
-    if (!wahl) return
+    if (!wahl || wahl === "pickel") return
     if ((inventar[wahl] ?? 0) < 1) return
     if (spieler.status !== "bereit") return
     setze(wahl, spieler.lage.lat, spieler.lage.lng)
     const danach = { ...inventar, [wahl]: inventar[wahl] - 1 }
     if (danach[wahl] <= 0) delete danach[wahl]
     setzeInventar(danach)
-  }
-
-  function baueGpsAb(blockId: string) {
-    if (!pickelBereit) {
-      setHinweis("Zum Abbauen eine Spitzhacke craften.")
-      return
-    }
-    const weg = bloecke.find((block) => block.id === blockId)
-    if (!weg) return
-    nimmWeg(blockId)
-    setzeInventar({
-      ...inventar,
-      [weg.gegenstandId]: (inventar[weg.gegenstandId] ?? 0) + 1,
-    })
   }
 
   function oeffneSceneViewer() {
@@ -130,7 +149,9 @@ export function BauenKamera() {
       sitzung.current?.beenden()
       sitzung.current = await starteBauenAr(arCanvas.current, steuerung.current)
       setArStatus("an")
-      setHinweis("Tippe auf den Boden zum Setzen. Mit Spitzhacke auf einen Block tippen zum Abbauen.")
+      setHinweis(
+        "Platte liegt auf der erkannten Ebene. Block setzen oder Spitzhacke wählen und abbauen.",
+      )
     } catch {
       setArStatus("fehlt")
       setHinweis(
@@ -154,45 +175,61 @@ export function BauenKamera() {
       <div className="mc-ar-hud">
         <h1 className="mc-title">Bauen</h1>
         <p className="mc-tagline">
-          Setzen: Block wählen, dann Boden antippen. Abbauen: Spitzhacke im Inventar, Block antippen.{" "}
-          {spieler.status === "bereit"
-            ? `${bloecke.length} gesetzt.`
-            : "Standort hilft beim GPS-Fallback."}
+          Wie Minecraft Earth: Platte auf dem Boden, Raster, Hotbar.{" "}
+          {spieler.status === "bereit" ? `${bloecke.length} gesetzt.` : ""}
         </p>
         {hinweis ? <p className="mc-tagline">{hinweis}</p> : null}
-        <ul className="mc-hotbar">
-          {vorrat.map(([id, anzahl]) => {
-            const item = gegenstandById(id)
+        {(inventar.pickel ?? 0) > 0 ? (
+          <p className="mc-pickel-bar" aria-label="Spitzhacke Haltbarkeit">
+            Pickel {haltbarkeit}/{maximum}
+            <span
+              className="mc-pickel-fill"
+              style={{ width: `${(haltbarkeit / maximum) * 100}%` }}
+            />
+          </p>
+        ) : null}
+        <ol className="mc-hotbar" aria-label="Hotbar">
+          {slots.map((slot, index) => {
+            const item = slot.id ? gegenstandById(slot.id) : null
             return (
-              <li key={id}>
+              <li key={slot.id ?? `leer-${index}`}>
                 <button
                   type="button"
-                  className={wahl === id ? "mc-slot mc-slot-wahl" : "mc-slot"}
-                  onClick={() => setWahl(id)}
+                  className={
+                    wahl === slot.id && slot.id
+                      ? "mc-slot mc-slot-wahl"
+                      : "mc-slot"
+                  }
+                  onClick={() => setWahl(slot.id)}
+                  aria-label={item?.name ?? "Leer"}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item?.textur ?? "/bloecke/erde.png"}
-                    alt={item?.name ?? id}
-                    className="mc-slot-block"
-                  />
-                  <span className="mc-slot-count">{anzahl}</span>
+                  {item ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.textur}
+                      alt={item.name}
+                      className="mc-slot-block"
+                    />
+                  ) : null}
+                  {slot.anzahl > 0 ? (
+                    <span className="mc-slot-count">{slot.anzahl}</span>
+                  ) : null}
                 </button>
               </li>
             )
           })}
-        </ul>
+        </ol>
         <div className="mc-ar-actions">
           <button
             type="button"
             className="mc-btn"
-            disabled={!wahl || spieler.status !== "bereit"}
+            disabled={!wahl || wahl === "pickel" || spieler.status !== "bereit"}
             onClick={platziereGps}
           >
             GPS setzen
           </button>
           <button type="button" className="mc-btn" onClick={() => void starteAr()}>
-            ARCore / WebXR
+            AR-Platte
           </button>
           <button
             type="button"
@@ -210,10 +247,17 @@ export function BauenKamera() {
                 <button
                   type="button"
                   className="mc-btn"
-                  onClick={() => baueGpsAb(block.id)}
+                  onClick={() =>
+                    schlageGesetzt(
+                      block.id,
+                      hatAbbauWerkzeug(inventar) ? "pickel" : null,
+                    )
+                  }
                 >
                   Abbau {gegenstandById(block.gegenstandId)?.name ?? block.gegenstandId}
-                  {block.ar ? " (AR)" : " (GPS)"}
+                  {abbau[block.id]
+                    ? ` ${abbau[block.id]}/${hatAbbauWerkzeug(inventar) ? 1 : 4}`
+                    : ""}
                 </button>
               </li>
             ))}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { haltbarkeitNachZugang } from "@/lib/abbauen"
 import { gegenstandById } from "@/lib/gegenstaende"
 import {
   ergebnisFuerRaster,
@@ -9,11 +10,13 @@ import {
   type Raster,
 } from "@/lib/werkbank"
 import { useInventar } from "../useInventar"
+import { usePickel } from "../usePickel"
 
 type Gehalten = { id: string; von: "inv" | number }
 
 export function WerkbankForm() {
   const { inventar, setzeInventar } = useInventar()
+  const { haltbarkeit, setzeHaltbarkeit } = usePickel()
   const [raster, setRaster] = useState<Raster>(leeresRaster)
   const [gehalten, setGehalten] = useState<Gehalten | null>(null)
   const ergebnis = ergebnisFuerRaster(raster)
@@ -58,6 +61,13 @@ export function WerkbankForm() {
     const genommen = nimmCraft(inventar, raster)
     if (!genommen.ok) return
     setzeInventar(genommen.inventar)
+    setzeHaltbarkeit(
+      haltbarkeitNachZugang(
+        haltbarkeit,
+        inventar.pickel ?? 0,
+        genommen.inventar.pickel ?? 0,
+      ),
+    )
     setRaster(genommen.raster)
     setGehalten(null)
   }
