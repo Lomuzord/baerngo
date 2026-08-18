@@ -1,6 +1,5 @@
 type FarbLayer = {
   setPaintProperty: (id: string, prop: string, value: unknown) => void
-  setLayoutProperty?: (id: string, prop: string, value: unknown) => void
   getStyle: () => { layers?: { id: string; type: string }[] }
 }
 
@@ -24,13 +23,6 @@ export function applyMinecraftLook(map: FarbLayer) {
       if (id.includes("building") && layer.type === "fill") {
         map.setPaintProperty(id, "fill-color", "#c2a06a")
         map.setPaintProperty(id, "fill-opacity", 0)
-      }
-      if (
-        id.includes("building") &&
-        layer.type === "fill-extrusion" &&
-        id !== "minecraft-buildings"
-      ) {
-        map.setLayoutProperty?.(id, "visibility", "none")
       }
     } catch {
       // Layer paint props vary; skip unsupported ones.
@@ -58,36 +50,4 @@ export const MINECRAFT_GEBAEUDE = {
     "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
     "fill-extrusion-opacity": 0.98,
   },
-}
-
-export function minecraftGebaeudeOhne(
-  loecher: { lng: number; lat: number; radiusMeter: number }[],
-) {
-  if (loecher.length === 0) return MINECRAFT_GEBAEUDE
-  const nahe = loecher.map((loch) => [
-    "<",
-    [
-      "distance",
-      { type: "Point", coordinates: [loch.lng, loch.lat] },
-    ],
-    loch.radiusMeter,
-  ])
-  return {
-    ...MINECRAFT_GEBAEUDE,
-    paint: {
-      ...MINECRAFT_GEBAEUDE.paint,
-      "fill-extrusion-height": [
-        "case",
-        ["any", ...nahe],
-        0,
-        ["coalesce", ["get", "height"], 10],
-      ],
-      "fill-extrusion-opacity": [
-        "case",
-        ["any", ...nahe],
-        0,
-        0.98,
-      ],
-    },
-  }
 }

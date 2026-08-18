@@ -4,13 +4,12 @@ import { useEffect, useRef } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { BERN_KARTE, kameraFuerSpieler, SPIELER_KAMERA } from "@/lib/karte"
-import { applyMinecraftLook, minecraftGebaeudeOhne } from "@/lib/minecraftStyle"
+import { applyMinecraftLook, MINECRAFT_GEBAEUDE } from "@/lib/minecraftStyle"
 import { gegenstandById } from "@/lib/gegenstaende"
 import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { listSichtModelle, sichtModellById, type SichtModell } from "@/lib/platzierung"
-import { listWeltModelle, trefferWeltModell } from "@/lib/weltModelle"
 import { useBauen } from "./useBauen"
-import { erstelleWeltModellLayer } from "./WeltModellLayer"
+import { starteModellSzene } from "./starteModellSzene"
 import { useSpielerOrt } from "./useSpielerOrt"
 
 export function BernKarteGl({
@@ -41,6 +40,7 @@ export function BernKarteGl({
     const el = kasten.current
     let map: mapboxgl.Map | undefined
     let cancelled = false
+    const modellStops: Array<() => void> = []
 
     void (async () => {
       const antwort = await fetch("/api/mapbox/session")
@@ -77,47 +77,47 @@ export function BernKarteGl({
         if (!map) return
         applyMinecraftLook(map)
         if (!map.getLayer("minecraft-buildings")) {
-          try {
-            map.addLayer(
-              minecraftGebaeudeOhne(
-                listWeltModelle().map((modell) => ({
-                  lng: modell.lage.lng,
-                  lat: modell.lage.lat,
-                  radiusMeter: modell.lochMeter,
-                })),
-              ),
-            )
-          } catch {
-            map.addLayer(minecraftGebaeudeOhne([]))
-          }
-        }
-        if (!map.getLayer("welt-modelle")) {
-          map.addLayer(erstelleWeltModellLayer(gewaehltRef))
+          map.addLayer(MINECRAFT_GEBAEUDE)
         }
         pins.current.clear()
         for (const modell of listSichtModelle()) {
-          if (meshFuerSehenswuerdigkeit(modell.id)) continue
-          const el = pinElement(modell, (id) => {
-            pinKlick.current = true
-            onWaehleRef.current(id)
-          })
+          const mesh = meshFuerSehenswuerdigkeit(modell.id)
+          const el = mesh
+            ? schwebeElement(modell, (id) => {
+                pinKlick.current = true
+                onWaehleRef.current(id)
+              })
+            : pinElement(modell, (id) => {
+                pinKlick.current = true
+                onWaehleRef.current(id)
+              })
           if (modell.id === gewaehltRef.current) {
-            el.classList.add("mc-ort-pin-aktiv")
+            el.classList.add(
+              mesh ? "mc-pokestop-aktiv" : "mc-ort-pin-aktiv",
+            )
           }
           pins.current.set(modell.id, el)
           new mapboxgl.Marker({ element: el, anchor: "bottom" })
             .setLngLat([modell.lage.lng, modell.lage.lat])
             .addTo(map)
+          if (mesh) {
+            const buehne = el.querySelector<HTMLElement>(".mc-pokestop-buehne")
+            if (buehne) {
+              void starteModellSzene(buehne, mesh, () =>
+                el.classList.contains("mc-pokestop-aktiv") ? 0.05 : 0.014,
+              ).then((stop) => {
+                if (cancelled) stop()
+                else modellStops.push(stop)
+              })
+            }
+          }
         }
-        map.on("click", (ereignis) => {
+        map.on("click", () => {
           if (pinKlick.current) {
             pinKlick.current = false
             return
           }
-          const treffer = trefferWeltModell(ereignis.point, (lngLat) =>
-            map.project(lngLat),
-          )
-          onWaehleRef.current(treffer)
+          onWaehleRef.current(null)
         })
         setzeSpielerMarker(map, spielerMarker, spielerRef.current)
         if (spielerRef.current.status === "bereit" && !gewaehltRef.current) {
@@ -129,6 +129,7 @@ export function BernKarteGl({
 
     return () => {
       cancelled = true
+      modellStops.forEach((stop) => stop())
       gebaute.current.forEach((marker) => marker.remove())
       gebaute.current = []
       spielerMarker.current?.remove()
@@ -178,7 +179,11 @@ export function BernKarteGl({
 
   useEffect(() => {
     pins.current.forEach((el, id) => {
-      el.classList.toggle("mc-ort-pin-aktiv", id === gewaehltId)
+      const istStop = el.classList.contains("mc-pokestop")
+      el.classList.toggle(
+        istStop ? "mc-pokestop-aktiv" : "mc-ort-pin-aktiv",
+        id === gewaehltId,
+      )
     })
     const map = karte.current
     const modell = gewaehltId ? sichtModellById(gewaehltId) : undefined
@@ -234,6 +239,30 @@ export function BernKarteGl({
       </ul>
     </div>
   )
+}
+
+function schwebeElement(
+  modell: SichtModell,
+  onWaehle: (id: string) => void,
+) {
+  const root = document.createElement("button")
+  root.type = "button"
+  root.className = "mc-pokestop"
+  root.dataset.sight = modell.id
+  root.dataset.modell = modell.modellId
+  root.setAttribute("aria-label", modell.name)
+  root.innerHTML = `
+    <span class="mc-pokestop-schwebe">
+      <span class="mc-pokestop-buehne"></span>
+    </span>
+    <span class="mc-pokestop-scheibe"></span>
+    <span class="mc-pokestop-ring"></span>
+  `
+  root.addEventListener("click", (event) => {
+    event.stopPropagation()
+    onWaehle(modell.id)
+  })
+  return root
 }
 
 function pinElement(
