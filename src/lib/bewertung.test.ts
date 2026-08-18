@@ -13,13 +13,13 @@ describe("bewerteAntwort", () => {
     expect(sehenswuerdigkeitById("zytglogge")?.name).toMatch(/Zytglogge/)
   })
 
-  it("marks a matching Bundeshaus answer correct and a non-matching one incorrect", () => {
+  it("marks a matching GIBB answer correct and a non-matching one incorrect", () => {
     expect(
-      bewerteAntwort("bundeshaus", "Bundesrat und Parlament tagen dort")
-        .korrekt,
+      bewerteAntwort(
+        "gibb",
+        "Die gewerblich-industrielle Berufsfachschule Bern",
+      ).korrekt,
     ).toBe(true)
-    expect(
-      bewerteAntwort("bundeshaus", "Dort wohnt der Stadtbär").korrekt,
-    ).toBe(false)
+    expect(bewerteAntwort("gibb", "Das Berner Rathaus").korrekt).toBe(false)
   })
 })
