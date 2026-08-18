@@ -348,6 +348,50 @@
   text-decoration: none;
 }
 
+.mc-modell {
+  background: #1a140f;
+  border: 2px solid #111;
+}
+
+.mc-modell-canvas {
+  width: 100%;
+  height: 140px;
+}
+
+.mc-modell-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mc-modell-credit {
+  margin: 0;
+  padding: 2px 6px 4px;
+  font-size: 0.75rem;
+  color: #8a7a62;
+}
+
+.mc-modell-karte {
+  width: 140px;
+  flex: none;
+}
+
+.mc-modell-karte .mc-modell-canvas {
+  height: 140px;
+}
+
+.mc-modell-liste .mc-modell-canvas {
+  height: 110px;
+}
+
+.mc-modell-detail {
+  margin: 0.8rem 0;
+}
+
+.mc-modell-detail .mc-modell-canvas {
+  height: 220px;
+}
+
 .mc-ort-karte-zu {
   margin-top: 0.55rem;
   background: none;

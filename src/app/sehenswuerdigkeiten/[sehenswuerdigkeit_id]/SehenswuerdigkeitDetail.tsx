@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { istInReichweite } from "@/lib/reichweite"
 import type { QuizOhneLoesung } from "@/lib/katalog"
+import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { ressourceFuerSehenswuerdigkeit } from "@/lib/sammeln"
 import { truheStatus } from "@/lib/truhe"
 import { InventarLeiste } from "../../InventarLeiste"
@@ -10,6 +11,7 @@ import { TruheKiste } from "../../TruheKiste"
 import { useInventar } from "../../useInventar"
 import { useSpielerOrt } from "../../useSpielerOrt"
 import { useTruhen } from "../../useTruhen"
+import { ModellBuehne } from "../../ModellBuehne"
 import { QuizForm } from "./QuizForm"
 
 export function SehenswuerdigkeitDetail({
@@ -29,6 +31,7 @@ export function SehenswuerdigkeitDetail({
   const reichweite =
     spieler.status === "bereit" ? istInReichweite(spieler.lage, id) : null
   const ressource = ressourceFuerSehenswuerdigkeit(id)
+  const mesh = meshFuerSehenswuerdigkeit(id)
   const truhe = truheStatus(stand, id)
   const vorOrt = spieler.status === "bereit" && Boolean(reichweite?.erlaubt)
 
@@ -46,6 +49,7 @@ export function SehenswuerdigkeitDetail({
           <p className="mc-card-loot">Truhe: {ressource.name}</p>
         ) : null}
       </header>
+      {mesh ? <ModellBuehne mesh={mesh} klasse="mc-modell-detail" /> : null}
 
       {spieler.status === "suche" ? <p>Standort wird gesucht…</p> : null}
       {spieler.status === "verweigert" ? (

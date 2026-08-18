@@ -1,6 +1,8 @@
 import type { Lage, SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
+import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { entfernungText, istInReichweite } from "@/lib/reichweite"
+import { ModellBuehne } from "./ModellBuehne"
 import { OrtPin } from "./OrtPin"
 
 export function SehenswuerdigkeitKarte3D({
@@ -15,6 +17,7 @@ export function SehenswuerdigkeitKarte3D({
   onWaehle: (id: string) => void
 }) {
   const foto = fotoFuerSehenswuerdigkeit(eintrag.id)
+  const mesh = meshFuerSehenswuerdigkeit(eintrag.id)
   const reichweite = istInReichweite(spielerLage, eintrag.id)
 
   return (
@@ -27,7 +30,9 @@ export function SehenswuerdigkeitKarte3D({
     >
       <article className={`mc-card ${gewaehlt ? "mc-card-aktiv" : ""}`}>
         <OrtPin aktiv={gewaehlt} klasse="mc-ort-pin-karte" />
-        {foto ? (
+        {mesh ? (
+          <ModellBuehne mesh={mesh} klasse="mc-modell-liste" />
+        ) : foto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="mc-card-foto"
