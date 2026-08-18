@@ -46,6 +46,56 @@ export function rezeptById(id: string): Rezept | undefined {
   return REZEPTE.find((rezept) => rezept.id === id)
 }
 
+export type Raster = (string | null)[]
+
+export function leeresRaster(): Raster {
+  return [null, null, null, null, null, null, null, null, null]
+}
+
+export function zaehleRaster(raster: Raster): Record<string, number> {
+  const stand: Record<string, number> = {}
+  for (const id of raster) {
+    if (!id) continue
+    stand[id] = (stand[id] ?? 0) + 1
+  }
+  return stand
+}
+
+export function ergebnisFuerRaster(raster: Raster): Gegenstand | null {
+  const haben = zaehleRaster(raster)
+  for (const rezept of REZEPTE) {
+    if (passtZutaten(haben, rezept.zutat)) {
+      return gegenstandById(rezept.ergebnisId) ?? null
+    }
+  }
+  return null
+}
+
+export function nimmCraft(
+  inventar: InventarStand,
+  raster: Raster,
+):
+  | { ok: true; inventar: InventarStand; raster: Raster; ergebnis: Gegenstand }
+  | { ok: false; grund: string } {
+  const ergebnis = ergebnisFuerRaster(raster)
+  if (!ergebnis) return { ok: false, grund: "Kein Rezept" }
+  const danach = { ...inventar }
+  danach[ergebnis.id] = (danach[ergebnis.id] ?? 0) + 1
+  return { ok: true, inventar: danach, raster: leeresRaster(), ergebnis }
+}
+
+function passtZutaten(
+  haben: Record<string, number>,
+  zutat: Record<string, number>,
+): boolean {
+  const schluessel = new Set([...Object.keys(haben), ...Object.keys(zutat)])
+  if (Object.keys(zutat).length === 0) return false
+  for (const id of schluessel) {
+    if ((haben[id] ?? 0) !== (zutat[id] ?? 0)) return false
+  }
+  return true
+}
+
 export function craft(inventar: InventarStand, rezeptId: string): CraftErgebnis {
   const rezept = rezeptById(rezeptId)
   if (!rezept) return { ok: false, grund: "Unbekanntes Rezept" }

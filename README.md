@@ -16,7 +16,10 @@ npm test
 npm run dev
 ```
 
-Open http://localhost:3000. Allow location. Walk to the Zytglogge (Zytglogä), the Münster, the Bärengraben, the Bundeshaus, or the GIBB — the quiz unlocks within about 80 metres.
+Open http://localhost:3000 on your phone. Allow location (and camera on **Bauen**). Walk to a sight, solve the quiz, then:
+
+- **Werkbank:** drag blocks into the 3×3 grid (2 Gold → Goldblock, Honig+Buch → Honigbrot, Smaragd+Sandstein+Gold → Bernwappen)
+- **Bauen:** pick a block and set it at your GPS; it also shows on the 3D map
 
 ## Design
 

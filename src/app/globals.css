@@ -259,7 +259,7 @@
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   background: #2b2118;
   border-top: 4px solid #111;
   padding-bottom: env(safe-area-inset-bottom);
@@ -346,4 +346,84 @@
 
 .mc-option:has(:checked) {
   border-color: #7cfc00;
+}
+
+.mc-table {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: #c6a17a;
+  border: 4px solid #5a3a1c;
+  padding: 0.8rem;
+}
+
+.mc-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 4px;
+}
+
+.mc-craft-slot,
+.mc-out-slot {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  padding: 0;
+}
+
+.mc-out-slot {
+  width: 64px;
+  height: 64px;
+}
+
+.mc-arrow {
+  font-size: 1.8rem;
+  color: #3d2b1f;
+}
+
+.mc-held {
+  color: #7cfc00;
+}
+
+.mc-slot-wahl {
+  outline: 3px solid #7cfc00;
+}
+
+.mc-ar {
+  position: relative;
+  min-height: 100dvh;
+  background: #1a140f;
+}
+
+.mc-ar-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mc-ar-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(#5b8c3a 2px, transparent 2px),
+    linear-gradient(90deg, #5b8c3a 2px, transparent 2px);
+  background-size: 32px 32px;
+  color: #fff8dc;
+  padding: 1rem;
+  text-align: center;
+}
+
+.mc-ar-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(4.2rem + env(safe-area-inset-bottom));
+  padding: 0.75rem;
+  background: #2b2118ee;
 }
