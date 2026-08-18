@@ -296,6 +296,97 @@
   background: #ec1c24;
 }
 
+.mc-pokestop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 92px;
+  height: 128px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.mc-pokestop-schwebe {
+  display: block;
+  animation: mc-pokestop-bob 2.6s ease-in-out infinite;
+}
+
+.mc-pokestop-aktiv .mc-pokestop-schwebe {
+  animation-duration: 1.35s;
+}
+
+.mc-pokestop-buehne {
+  display: block;
+  width: 88px;
+  height: 88px;
+}
+
+.mc-pokestop-buehne canvas {
+  display: block;
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 8px 6px #0008);
+}
+
+.mc-pokestop-scheibe {
+  width: 36px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #7ef0ff 0%, #1aa6c8 55%, #0b4d5e 100%);
+  box-shadow: 0 0 10px #3de7ff;
+}
+
+.mc-pokestop-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 36px;
+  height: 12px;
+  translate: -50% 0;
+  border-radius: 50%;
+  border: 2px solid #7ef0ff;
+  animation: mc-pokestop-ring 2.2s ease-out infinite;
+  pointer-events: none;
+}
+
+.mc-pokestop-aktiv .mc-pokestop-scheibe {
+  background: radial-gradient(circle, #fff8a8 0%, #f1c232 55%, #7a4b00 100%);
+  box-shadow: 0 0 12px #f1c232;
+}
+
+.mc-pokestop-aktiv .mc-pokestop-ring {
+  border-color: #f1c232;
+  animation-duration: 1.1s;
+}
+
+@keyframes mc-pokestop-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes mc-pokestop-ring {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
 .mc-ort-karte {
   position: absolute;
   left: 8px;
