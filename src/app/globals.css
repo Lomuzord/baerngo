@@ -944,6 +944,36 @@
   object-fit: cover;
 }
 
+.mc-ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.mc-ar-canvas-aktiv {
+  pointer-events: auto;
+}
+
+.mc-ar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.mc-ar-bloecke {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 7rem;
+  overflow: auto;
+}
+
 .mc-ar-fallback {
   position: absolute;
   inset: 0;

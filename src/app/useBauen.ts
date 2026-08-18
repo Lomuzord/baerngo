@@ -12,17 +12,36 @@ export function useBauen() {
     setBloecke(leseBloecke())
   }, [])
 
-  const setze = useCallback((gegenstandId: string, lat: number, lng: number) => {
-    const block = neuerBlock(gegenstandId, lat, lng)
+  const setze = useCallback(
+    (
+      gegenstandId: string,
+      lat: number,
+      lng: number,
+      ar?: { x: number; y: number; z: number },
+    ) => {
+      const block = neuerBlock(gegenstandId, lat, lng, ar)
+      setBloecke((bisher) => {
+        const danach = [...bisher, block]
+        schreibeBloecke(danach)
+        return danach
+      })
+      return block
+    },
+    [],
+  )
+
+  const nimmWeg = useCallback((blockId: string) => {
+    let entfernt: GesetzterBlock | undefined
     setBloecke((bisher) => {
-      const danach = [...bisher, block]
+      entfernt = bisher.find((block) => block.id === blockId)
+      const danach = bisher.filter((block) => block.id !== blockId)
       schreibeBloecke(danach)
       return danach
     })
-    return block
+    return entfernt
   }, [])
 
-  return { bloecke, setze }
+  return { bloecke, setze, nimmWeg }
 }
 
 function leseBloecke(): GesetzterBlock[] {

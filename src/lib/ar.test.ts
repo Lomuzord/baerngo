@@ -6,6 +6,8 @@ import {
   kannSceneViewer,
   modelViewerArModi,
   sceneViewerUrl,
+  webXrFeatures,
+  webXrModus,
 } from "./ar"
 
 describe("sceneViewerUrl", () => {
@@ -24,5 +26,13 @@ describe("sceneViewerUrl", () => {
     expect(modelViewerArModi()).toContain("scene-viewer")
     expect(kannSceneViewer("https://baerngo.example")).toBe(true)
     expect(kannSceneViewer("http://localhost:3000")).toBe(false)
+  })
+})
+
+describe("webXrModus", () => {
+  it("asks for immersive-ar with hit-test so ARCore Chrome can place blocks", () => {
+    expect(webXrModus()).toBe("immersive-ar")
+    expect(webXrFeatures()).toContain("hit-test")
+    expect(webXrFeatures()).toContain("local-floor")
   })
 })

@@ -6,6 +6,14 @@ export function kannSceneViewer(ursprung: string): boolean {
   return ursprung.startsWith("https://")
 }
 
+export function webXrModus(): "immersive-ar" {
+  return "immersive-ar"
+}
+
+export function webXrFeatures(): string[] {
+  return ["hit-test", "local-floor"]
+}
+
 export function sceneViewerUrl(gltfUrl: string, titel: string): string {
   const datei = encodeURIComponent(gltfUrl)
   const name = encodeURIComponent(titel)
