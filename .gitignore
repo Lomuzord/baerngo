@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build / cache
+dist/
+build/
+.next/
+out/
+.cache/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs and coverage
+logs/
+*.log
+npm-debug.log*
+coverage/
+.nyc_output/
+
+# Mobile / native
+ios/Pods/
+android/.gradle/
+*.apk
+*.ipa
