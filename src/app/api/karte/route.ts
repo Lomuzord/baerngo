@@ -6,8 +6,8 @@ export async function GET() {
   const token = mapboxToken()
   const { lng, lat, zoom, width, height } = BERN_KARTE
   const url =
-    `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/` +
-    `${lng},${lat},${zoom},0/${width}x${height}@2x?access_token=${token}`
+    `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
+    `${lng},${lat},${zoom},0/${width}x${height}?access_token=${token}`
 
   console.info("karte: loading Mapbox static image from MAPBOX_TOKEN env")
   try {

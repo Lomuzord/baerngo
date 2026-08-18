@@ -9,11 +9,11 @@ export type Kartenrahmen = {
 }
 
 export const BERN_KARTE: Kartenrahmen = {
-  lat: 46.9476,
-  lng: 7.451,
-  zoom: 15,
-  width: 1280,
-  height: 900,
+  lat: 46.9512,
+  lng: 7.4512,
+  zoom: 14,
+  width: 640,
+  height: 480,
 }
 
 export type Pixel = {

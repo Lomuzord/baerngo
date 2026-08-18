@@ -86,6 +86,21 @@ const KATALOG: readonly Sehenswuerdigkeit[] = [
       richtigeAntwort: "Bundesrat und Parlament tagen dort",
     },
   },
+  {
+    id: "gibb",
+    name: "GIBB",
+    alias: ["gibb Berufsfachschule Bern"],
+    lage: { lat: 46.9546, lng: 7.44467 },
+    quiz: {
+      frage: "Was ist die GIBB?",
+      optionen: [
+        "Die gewerblich-industrielle Berufsfachschule Bern",
+        "Das Berner Rathaus",
+        "Ein Bärengehege",
+      ],
+      richtigeAntwort: "Die gewerblich-industrielle Berufsfachschule Bern",
+    },
+  },
 ]
 
 export function listSehenswuerdigkeiten(): readonly Sehenswuerdigkeit[] {

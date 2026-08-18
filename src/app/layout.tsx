@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next"
-import { Archivo, Archivo_Black } from "next/font/google"
+import { Press_Start_2P, VT323 } from "next/font/google"
 import "./globals.css"
 
-const archivo = Archivo({
-  subsets: ["latin"],
-  variable: "--font-archivo",
-})
-
-const archivoBlack = Archivo_Black({
+const pixel = Press_Start_2P({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-archivo-black",
+  variable: "--font-pixel",
+})
+
+const vt = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-vt",
 })
 
 export const viewport: Viewport = {
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "bärngo",
   description:
-    "Geh zu Sehenswürdigkeiten in Bern, beantworte das Quiz vor Ort.",
+    "Geh zu Sehenswürdigkeiten in Bern, löse das Quiz und sammle Minecraft-Ressourcen.",
 }
 
 export default function RootLayout({
@@ -32,9 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body
-        className={`${archivo.variable} ${archivoBlack.variable} bg-stone-950 font-sans text-stone-50 antialiased`}
-      >
+      <body className={`${pixel.variable} ${vt.variable} mc-body`}>
         {children}
       </body>
     </html>

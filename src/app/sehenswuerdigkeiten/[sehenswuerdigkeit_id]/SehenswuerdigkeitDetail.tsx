@@ -3,6 +3,9 @@
 import Link from "next/link"
 import { istInReichweite } from "@/lib/reichweite"
 import type { QuizOhneLoesung } from "@/lib/katalog"
+import { ressourceFuerSehenswuerdigkeit } from "@/lib/sammeln"
+import { InventarLeiste } from "../../InventarLeiste"
+import { useInventar } from "../../useInventar"
 import { useSpielerOrt } from "../../useSpielerOrt"
 import { QuizForm } from "./QuizForm"
 
@@ -18,44 +21,35 @@ export function SehenswuerdigkeitDetail({
   quiz: QuizOhneLoesung
 }) {
   const spieler = useSpielerOrt()
+  const { inventar } = useInventar()
   const reichweite =
     spieler.status === "bereit" ? istInReichweite(spieler.lage, id) : null
+  const ressource = ressourceFuerSehenswuerdigkeit(id)
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-8 px-4 py-8">
-      <Link
-        href="/"
-        className="text-xs uppercase tracking-[0.18em] text-stone-400"
-      >
+    <main className="mc-panel">
+      <InventarLeiste inventar={inventar} />
+      <Link href="/" className="mc-back">
         ← Karte
       </Link>
       <header>
-        <p className="text-xs uppercase tracking-[0.22em] text-red-700">
-          Sehenswürdigkeit
-        </p>
-        <h1 className="mt-2 font-display text-5xl leading-[0.9] tracking-tight text-stone-50 sm:text-6xl">
-          {name}
-        </h1>
-        {alias.length > 0 ? (
-          <p className="mt-3 text-stone-400">{alias.join(" · ")}</p>
+        <p className="mc-kicker">Sehenswürdigkeit</p>
+        <h1 className="mc-title">{name}</h1>
+        {alias.length > 0 ? <p className="mc-tagline">{alias.join(" · ")}</p> : null}
+        {ressource ? (
+          <p className="mc-card-loot">Belohnung: {ressource.name}</p>
         ) : null}
       </header>
 
-      {spieler.status === "suche" ? (
-        <p className="text-stone-300">Standort wird gesucht…</p>
-      ) : null}
+      {spieler.status === "suche" ? <p>Standort wird gesucht…</p> : null}
       {spieler.status === "verweigert" ? (
-        <p className="text-stone-300">
-          Ohne Standort kein Quiz. Erlaube den Ort und geh zur Sehenswürdigkeit.
-        </p>
+        <p>Ohne Standort kein Quiz. Erlaube den Ort und geh hin.</p>
       ) : null}
       {spieler.status === "fehler" ? (
-        <p className="text-stone-300">
-          Standort nicht verfügbar. Das Quiz geht nur vor Ort.
-        </p>
+        <p>Standort nicht verfügbar. Das Quiz geht nur vor Ort.</p>
       ) : null}
       {reichweite && !reichweite.erlaubt ? (
-        <p className="text-lg text-stone-200">
+        <p>
           Noch {Math.round(reichweite.distanzMeter)} m. Geh zum {name}.
         </p>
       ) : null}
