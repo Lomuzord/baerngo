@@ -13,10 +13,13 @@ export function InventarLeiste({ inventar }: { inventar: Inventar }) {
     <ol className="mc-hotbar" aria-label="Inventar">
       {slots.map((ressource) => (
         <li key={ressource.id} className="mc-slot">
-          <span
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             className="mc-slot-block"
-            style={{ background: ressource.farbe }}
-            aria-hidden
+            src={ressource.textur}
+            alt=""
+            width={48}
+            height={48}
           />
           <span className="mc-slot-name">{ressource.name}</span>
           <span className="mc-slot-count">{inventar[ressource.id] ?? 0}</span>

@@ -4,8 +4,8 @@ import { ressourceFuerSehenswuerdigkeit } from "./sammeln"
 
 describe("ressourceFuerSehenswuerdigkeit", () => {
   it("gives Gold at the Zytglogge and a book at the GIBB", () => {
-    expect(ressourceFuerSehenswuerdigkeit("zytglogge")?.name).toBe("Gold")
-    expect(ressourceFuerSehenswuerdigkeit("gibb")?.name).toBe("Buch")
+    expect(ressourceFuerSehenswuerdigkeit("zytglogge")?.id).toBe("gold")
+    expect(ressourceFuerSehenswuerdigkeit("gibb")?.id).toBe("buch")
   })
 
   it("gives every catalogued sight its own resource", () => {

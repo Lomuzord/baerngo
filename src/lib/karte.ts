@@ -31,6 +31,16 @@ export function pixelFuerLage(lage: Lage, rahmen: Kartenrahmen): Pixel {
   }
 }
 
+export function weltPositionFuerLage(lage: Lage): { x: number; z: number } {
+  const meterProGradLat = 110_540
+  const meterProGradLng =
+    111_320 * Math.cos((BERN_KARTE.lat * Math.PI) / 180)
+  return {
+    x: ((lage.lng - BERN_KARTE.lng) * meterProGradLng) / 25,
+    z: (-(lage.lat - BERN_KARTE.lat) * meterProGradLat) / 25,
+  }
+}
+
 export function liegtAufKarte(pixel: Pixel, rahmen: Kartenrahmen): boolean {
   return (
     pixel.x >= 0 &&

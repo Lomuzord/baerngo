@@ -20,12 +20,13 @@
 
 .mc-world {
   min-height: 100dvh;
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
 }
 
 .mc-header {
   background: #2b2118;
   border-bottom: 6px solid #1a140f;
-  padding: 1rem 1rem 0.75rem;
+  padding: calc(0.6rem + env(safe-area-inset-top)) 0.75rem 0.6rem;
 }
 
 .mc-kicker {
@@ -172,11 +173,12 @@
   width: 56px;
   height: 56px;
   margin: 0 auto 0.6rem;
-  background: var(--block);
+  background-color: var(--block);
+  background-size: 100% 100%;
+  image-rendering: pixelated;
   box-shadow:
     10px 0 0 color-mix(in srgb, var(--block) 70%, #000),
-    0 10px 0 color-mix(in srgb, var(--block) 55%, #000),
-    inset 3px 3px 0 color-mix(in srgb, var(--block) 70%, #fff);
+    0 10px 0 color-mix(in srgb, var(--block) 55%, #000);
   transform: rotateX(18deg) rotateZ(-18deg);
 }
 
@@ -199,7 +201,81 @@
 .mc-panel {
   max-width: 36rem;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: calc(0.8rem + env(safe-area-inset-top)) 0.9rem
+    calc(5rem + env(safe-area-inset-bottom));
+}
+
+.mc-map3d {
+  height: min(58dvh, 420px);
+  background: #87ceeb;
+  border-bottom: 6px solid #1a140f;
+}
+
+.mc-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: #2b2118;
+  border-top: 4px solid #111;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mc-tab {
+  text-align: center;
+  padding: 0.85rem 0.4rem;
+  color: #d7c39a;
+  text-decoration: none;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.55rem;
+}
+
+.mc-tab-aktiv {
+  color: #7cfc00;
+  background: #1a140f;
+}
+
+.mc-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .mc-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+.mc-inv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+
+.mc-inv-slot {
+  min-width: 0;
+  height: 72px;
+}
+
+.mc-rezepte {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mc-rezept {
+  background: #2b2118;
+  border: 3px solid #111;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .mc-back {

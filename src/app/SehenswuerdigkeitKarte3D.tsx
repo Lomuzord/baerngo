@@ -19,7 +19,14 @@ export function SehenswuerdigkeitKarte3D({
       <article className="mc-card">
         <div
           className="mc-cube"
-          style={{ "--block": ressource?.farbe ?? "#888" } as CSSProperties}
+          style={
+            {
+              "--block": "#8b5a2b",
+              backgroundImage: ressource
+                ? `url(${ressource.textur})`
+                : undefined,
+            } as CSSProperties
+          }
         />
         <h2 className="mc-card-title">{eintrag.name}</h2>
         <p className="mc-card-loot">{ressource?.name ?? "???"}</p>

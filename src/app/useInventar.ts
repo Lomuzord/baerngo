@@ -21,7 +21,12 @@ export function useInventar() {
     })
   }, [])
 
-  return { inventar, sammle }
+  const setzeInventar = useCallback((danach: Inventar) => {
+    schreibeInventar(danach)
+    setInventar(danach)
+  }, [])
+
+  return { inventar, sammle, setzeInventar }
 }
 
 function leseInventar(): Inventar {

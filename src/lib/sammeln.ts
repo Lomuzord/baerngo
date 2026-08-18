@@ -1,19 +1,18 @@
-export type Ressource = {
-  id: string
-  name: string
-  farbe: string
+import { gegenstandById, type Gegenstand } from "./gegenstaende"
+
+const ORT_ZU_GEGENSTAND: Record<string, string> = {
+  zytglogge: "gold",
+  muenster: "sandstein",
+  baerengraben: "honig",
+  bundeshaus: "smaragd",
+  gibb: "buch",
 }
 
-const RESSOURCEN_NACH_ORT: Record<string, Ressource> = {
-  zytglogge: { id: "gold", name: "Gold", farbe: "#f1c232" },
-  muenster: { id: "sandstein", name: "Sandstein", farbe: "#d4b483" },
-  baerengraben: { id: "honig", name: "Honig", farbe: "#e09b1b" },
-  bundeshaus: { id: "smaragd", name: "Smaragd", farbe: "#2ecc71" },
-  gibb: { id: "buch", name: "Buch", farbe: "#6b4f2a" },
-}
+export type Ressource = Gegenstand
 
 export function ressourceFuerSehenswuerdigkeit(
   sehenswuerdigkeitId: string,
-): Ressource | undefined {
-  return RESSOURCEN_NACH_ORT[sehenswuerdigkeitId]
+): Gegenstand | undefined {
+  const id = ORT_ZU_GEGENSTAND[sehenswuerdigkeitId]
+  return id ? gegenstandById(id) : undefined
 }
