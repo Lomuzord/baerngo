@@ -12,6 +12,12 @@ const MESHES: Record<string, SichtMesh> = {
     format: "collada",
     credit: "0 A.D. / Wildfire Games, CC BY-SA 3.0",
   },
+  bundeshaus: {
+    src: "/modelle/bundeshaus.dae",
+    textur: "/modelle/bundeshaus.png",
+    format: "collada",
+    credit: "0 A.D. / Wildfire Games, CC BY-SA 3.0",
+  },
 }
 
 export function meshFuerSehenswuerdigkeit(
