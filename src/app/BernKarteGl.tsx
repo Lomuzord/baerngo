@@ -30,6 +30,9 @@ import {
 } from "@/lib/inventar"
 import { bonusDrop } from "@/lib/sammeln"
 import { istTier, tierById, tierDrops } from "@/lib/tiere"
+import { BRUNNEN } from "@/lib/brunnen"
+import { WANDER_ZIEL_METER, wanderText } from "@/lib/wanderung"
+import { useWanderweg } from "./useWanderweg"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
@@ -85,6 +88,33 @@ export function BernKarteGl({
   const umweltAnRef = useRef(umweltAn)
   umweltAnRef.current = umweltAn
   const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit)
+  const { meter, brunnen, oeffneTruhe } = useWanderweg(
+    spieler,
+    (text, beute) => {
+      spieleHaptik("sammeln")
+      if (beute.length > 0) {
+        const gelegt = legeBeuteInSlotsMitRest(slotsRef.current, [...beute])
+        if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+        setzeSlotsRef.current(gelegt.slots)
+      }
+      setHinweis(text)
+    },
+  )
+  const brunnenStandRef = useRef(brunnen)
+  brunnenStandRef.current = brunnen
+
+  // Gesammelte Brunnen bekommen den goldenen Haken
+  useEffect(() => {
+    const schon = new Set(brunnen.gesammelt)
+    for (const el of document.querySelectorAll<HTMLElement>(
+      ".mc-brunnen-marker",
+    )) {
+      el.classList.toggle(
+        "mc-brunnen-da",
+        Boolean(el.dataset.brunnen && schon.has(el.dataset.brunnen)),
+      )
+    }
+  }, [brunnen, karteBereit])
   const nimmRef = useRef(nimm)
   nimmRef.current = nimm
   const bloeckeRef = useRef(bloecke)
@@ -148,6 +178,16 @@ export function BernKarteGl({
           map.addLayer(MINECRAFT_GEBAEUDE as never)
         }
         pins.current.clear()
+        for (const brunnenEintrag of BRUNNEN) {
+          const el = document.createElement("div")
+          el.className = "mc-brunnen-marker"
+          el.dataset.brunnen = brunnenEintrag.id
+          el.title = brunnenEintrag.name
+          el.innerHTML = `<img src="/bloecke/brunnen.png" alt="" draggable="false" />`
+          new mapboxgl.Marker({ element: el, anchor: "bottom" })
+            .setLngLat([brunnenEintrag.lage.lng, brunnenEintrag.lage.lat])
+            .addTo(map)
+        }
         for (const modell of listSichtModelle()) {
           const mesh = meshFuerSehenswuerdigkeit(modell.id)
           const el = mesh
@@ -435,6 +475,35 @@ export function BernKarteGl({
       <p className="mc-wild-zahl">
         {bloecke.length} Blöcke in der Nähe
       </p>
+      <button
+        type="button"
+        className={
+          meter >= WANDER_ZIEL_METER
+            ? "mc-wander-chip mc-wander-bereit"
+            : "mc-wander-chip"
+        }
+        onClick={() => {
+          const beute = oeffneTruhe()
+          if (!beute) return
+          const gelegt = legeBeuteInSlotsMitRest(slotsRef.current, beute)
+          if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+          setzeSlotsRef.current(gelegt.slots)
+          spieleHaptik("truhe")
+          const text = beute
+            .map(
+              (stuck) =>
+                `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
+            )
+            .join(" · ")
+          setHinweis(`Wander-Truhe geöffnet! ${text}`)
+        }}
+        disabled={meter < WANDER_ZIEL_METER}
+        aria-label="Wander-Truhe"
+      >
+        {meter >= WANDER_ZIEL_METER
+          ? "🧰 Wander-Truhe öffnen!"
+          : `🥾 ${wanderText(meter)}`}
+      </button>
       {spieler.status !== "bereit" ? (
         <p className="mc-ort-status" data-testid="spieler-ort">
           {spieler.status === "verweigert"

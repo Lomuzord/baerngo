@@ -1,5 +1,6 @@
 "use client"
 
+import { BRUNNEN, parseBrunnenStand } from "@/lib/brunnen"
 import { useEffect, useRef, useState } from "react"
 import { anzeigeHaltbarkeit } from "@/lib/abbauen"
 import { gegenstandById } from "@/lib/gegenstaende"
@@ -34,6 +35,18 @@ export function InventarList() {
 
   const name = cursor ? gegenstandById(cursor.id)?.name : null
 
+  const [brunnenGesammelt, setBrunnenGesammelt] = useState<string[]>([])
+  useEffect(() => {
+    try {
+      const roh = window.localStorage.getItem("baerngo-brunnen")
+      setBrunnenGesammelt(
+        parseBrunnenStand(roh ? JSON.parse(roh) : null).gesammelt,
+      )
+    } catch {
+      setBrunnenGesammelt([])
+    }
+  }, [])
+
   return (
     <section className="mc-panel">
       <h1 className="mc-title">Inventar</h1>
@@ -55,6 +68,24 @@ export function InventarList() {
           {cursor.anzahl > 1 ? ` ×${cursor.anzahl}` : ""}
         </p>
       ) : null}
+      <p className="mc-abzeichen-titel">
+        Brunnen-Abzeichen · {brunnenGesammelt.length}/{BRUNNEN.length}
+      </p>
+      <ol className="mc-abzeichen" aria-label="Brunnen-Abzeichen">
+        {BRUNNEN.map((brunnen) => {
+          const da = brunnenGesammelt.includes(brunnen.id)
+          return (
+            <li
+              key={brunnen.id}
+              className={da ? undefined : "mc-abzeichen-fehlt"}
+              title={da ? brunnen.name : `${brunnen.name} — noch nicht besucht`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/bloecke/brunnen.png" alt={brunnen.name} />
+            </li>
+          )
+        })}
+      </ol>
     </section>
   )
 }

@@ -204,6 +204,112 @@
   }
 }
 
+/* Wander-Truhe: kleiner Fortschritts-Chip auf der Karte */
+.mc-wander-chip {
+  position: absolute;
+  left: 0.6rem;
+  top: 2.9rem;
+  z-index: 5;
+  font-family: var(--font-vt), ui-monospace, monospace;
+  font-size: 0.95rem;
+  color: #ffe9c7;
+  background: #2b2118e6;
+  border: 2px solid #4a3a28;
+  border-radius: 8px;
+  padding: 0.25rem 0.5rem;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.mc-wander-chip:disabled {
+  opacity: 1;
+}
+
+.mc-wander-bereit {
+  border-color: #f1c232;
+  color: #ffd75e;
+  cursor: pointer;
+  animation: mc-wander-glanz 1.2s ease-in-out infinite;
+}
+
+@keyframes mc-wander-glanz {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 #f1c23255;
+  }
+  50% {
+    box-shadow: 0 0 0 6px #f1c23200;
+  }
+}
+
+/* Brunnen-Marker: klein und dezent, gesammelt = golden */
+.mc-brunnen-marker {
+  width: 26px;
+  height: 26px;
+  opacity: 0.92;
+}
+
+.mc-brunnen-marker img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 2px 0 #0006);
+}
+
+.mc-brunnen-da img {
+  filter: drop-shadow(0 0 4px #f1c232) drop-shadow(1px 2px 0 #0006);
+}
+
+.mc-brunnen-da::after {
+  content: "✓";
+  position: absolute;
+  right: -4px;
+  top: -6px;
+  font-size: 0.7rem;
+  color: #7cfc00;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* Abzeichen-Leiste auf der Inventarseite */
+.mc-abzeichen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 8px;
+  background: #1a140f;
+  border: 4px solid #111;
+  border-radius: 8px;
+}
+
+.mc-abzeichen li {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: #c6c6c6;
+  border: 2px solid #555;
+}
+
+.mc-abzeichen img {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+
+.mc-abzeichen .mc-abzeichen-fehlt img {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.6;
+}
+
+.mc-abzeichen-titel {
+  margin: 1rem 0 0.2rem;
+  color: #ffe9c7;
+  font-size: 1rem;
+  text-shadow: 1px 1px 0 #000;
+}
+
 /* Tageszeit und Wetter über der Karte — reine Deko, fasst nichts an */
 .mc-himmel-tint,
 .mc-himmel-regen,
