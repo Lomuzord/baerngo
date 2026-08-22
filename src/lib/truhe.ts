@@ -7,7 +7,9 @@ export type TruheEintrag = {
 
 export type TruheStand = Record<string, TruheEintrag>
 
-export const TRUHE_PAUSE_MS = 3 * 60 * 1000
+// 10 Minuten: lang genug, dass der Weg zur nächsten Sehenswürdigkeit
+// attraktiver ist als das Warten an derselben Truhe.
+export const TRUHE_PAUSE_MS = 10 * 60 * 1000
 
 export function truheStatus(
   stand: TruheStand,

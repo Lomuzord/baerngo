@@ -307,6 +307,300 @@ for (const [id, fragen] of Object.entries(WEITERE_ZUSATZFRAGEN)) {
   ZUSATZFRAGEN[id] = [...(ZUSATZFRAGEN[id] ?? []), ...fragen]
 }
 
+
+// Dritte Runde Fragen: jede Sehenswürdigkeit hat damit mindestens
+// drei Fragen — beim Wiederbesuch wiederholt sich so kaum etwas.
+const DRITTE_FRAGEN: Record<string, Quiz[]> = {
+  zytglogge: [
+    {
+      frage: "Welches Tier kräht am Zytglogge kurz vor jedem Stundenschlag?",
+      optionen: [
+        "Ein goldener Hahn",
+        "Ein Bär",
+        "Ein Adler",
+        "Ein Löwe",
+      ],
+      richtigeAntwort: "Ein goldener Hahn",
+    },
+  ],
+  muenster: [
+    {
+      frage:
+        "Wann wurde der Turm des Berner Münsters nach jahrhundertelanger Bauzeit vollendet?",
+      optionen: ["1573", "1721", "1893", "1930"],
+      richtigeAntwort: "1893",
+    },
+  ],
+  baerengraben: [
+    {
+      frage: "Wohin können die Bären im BärenPark direkt hinuntersteigen?",
+      optionen: [
+        "Zur Aare",
+        "In den Rosengarten",
+        "Auf den Bundesplatz",
+        "In einen Tunnel zum Gurten",
+      ],
+      richtigeAntwort: "Zur Aare",
+    },
+  ],
+  bundeshaus: [
+    {
+      frage: "Welcher lateinische Spruch steht in der Kuppel des Bundeshauses?",
+      optionen: [
+        "Unus pro omnibus, omnes pro uno",
+        "In varietate concordia",
+        "Libertas et pax",
+        "Veni, vidi, vici",
+      ],
+      richtigeAntwort: "Unus pro omnibus, omnes pro uno",
+    },
+  ],
+  rosengarten: [
+    {
+      frage: "Wofür ist die Aussicht vom Rosengarten besonders berühmt?",
+      optionen: [
+        "Für den Blick auf Altstadt und Aareschlaufe",
+        "Für den Blick auf das Matterhorn",
+        "Für den Blick auf den Flughafen",
+        "Für den Blick auf den Bielersee",
+      ],
+      richtigeAntwort: "Für den Blick auf Altstadt und Aareschlaufe",
+    },
+  ],
+  kaefigturm: [
+    {
+      frage: "Woher kommt der Name des Käfigturms?",
+      optionen: [
+        "Von den Gefängniszellen, den Käfigen",
+        "Von den Vogelkäfigen auf dem Markt",
+        "Vom Käfiggässchen daneben",
+        "Von einem Berner Geschlecht namens Käfig",
+      ],
+      richtigeAntwort: "Von den Gefängniszellen, den Käfigen",
+    },
+  ],
+  einsteinhaus: [
+    {
+      frage:
+        "Wo arbeitete Albert Einstein, während er an der Kramgasse wohnte?",
+      optionen: [
+        "Im Eidgenössischen Patentamt",
+        "An der Universität Bern",
+        "Im Bundeshaus",
+        "In einer Uhrenwerkstatt",
+      ],
+      richtigeAntwort: "Im Eidgenössischen Patentamt",
+    },
+  ],
+  gurten: [
+    {
+      frage: "Wie hoch ist der Gurten ungefähr?",
+      optionen: ["558 Meter", "858 Meter", "1258 Meter", "1858 Meter"],
+      richtigeAntwort: "858 Meter",
+    },
+  ],
+  gibb: [
+    {
+      frage:
+        "Aus welchem Material besteht die berühmte Fassade des gibb-Campus an der Lorrainestrasse vor allem?",
+      optionen: ["Glas", "Sandstein", "Sichtbeton", "Holz"],
+      richtigeAntwort: "Glas",
+    },
+  ],
+  kornhaus: [
+    {
+      frage: "Wozu diente das Kornhaus ursprünglich?",
+      optionen: [
+        "Als Getreidespeicher der Stadt",
+        "Als Rathaus",
+        "Als Zeughaus",
+        "Als Markthalle für Vieh",
+      ],
+      richtigeAntwort: "Als Getreidespeicher der Stadt",
+    },
+  ],
+  "zentrum-paul-klee": [
+    {
+      frage: "In welchem Jahr wurde das Zentrum Paul Klee eröffnet?",
+      optionen: ["1998", "2005", "2011", "2016"],
+      richtigeAntwort: "2005",
+    },
+    {
+      frage:
+        "Wie viele Werke von Paul Klee beherbergt das Zentrum ungefähr?",
+      optionen: ["Rund 400", "Rund 1200", "Rund 4000", "Rund 12000"],
+      richtigeAntwort: "Rund 4000",
+    },
+  ],
+  kunstmuseum: [
+    {
+      frage:
+        "Welcher berühmte Berner Maler ist im Kunstmuseum prominent vertreten?",
+      optionen: [
+        "Ferdinand Hodler",
+        "Albert Anker",
+        "Arnold Böcklin",
+        "Giovanni Segantini",
+      ],
+      richtigeAntwort: "Ferdinand Hodler",
+    },
+    {
+      frage:
+        "Welches weltweit beachtete Kunsterbe nahm das Kunstmuseum Bern 2014 an?",
+      optionen: [
+        "Die Sammlung Gurlitt",
+        "Die Sammlung Bührle",
+        "Den Nachlass Picassos",
+        "Die Medici-Sammlung",
+      ],
+      richtigeAntwort: "Die Sammlung Gurlitt",
+    },
+  ],
+  nydeggkirche: [
+    {
+      frage: "In welchem Jahrhundert wurde mit dem Bau der Nydeggkirche begonnen?",
+      optionen: [
+        "Im 12. Jahrhundert",
+        "Im 14. Jahrhundert",
+        "Im 16. Jahrhundert",
+        "Im 18. Jahrhundert",
+      ],
+      richtigeAntwort: "Im 14. Jahrhundert",
+    },
+    {
+      frage:
+        "Welche Brücke — die älteste Berns — liegt direkt unterhalb der Nydeggkirche?",
+      optionen: [
+        "Die Untertorbrücke",
+        "Die Kirchenfeldbrücke",
+        "Die Lorrainebrücke",
+        "Die Monbijoubrücke",
+      ],
+      richtigeAntwort: "Die Untertorbrücke",
+    },
+  ],
+  "botanischer-garten": [
+    {
+      frage: "Zu welcher Institution gehört der Botanische Garten Bern?",
+      optionen: [
+        "Zur Universität Bern",
+        "Zur Stadtgärtnerei",
+        "Zum Bundesamt für Umwelt",
+        "Zum Tierpark Dählhölzli",
+      ],
+      richtigeAntwort: "Zur Universität Bern",
+    },
+    {
+      frage: "An welchem Fluss liegt der Botanische Garten Bern?",
+      optionen: ["An der Aare", "An der Saane", "An der Emme", "Am Rhein"],
+      richtigeAntwort: "An der Aare",
+    },
+  ],
+  heiliggeistkirche: [
+    {
+      frage: "Wo in Bern steht die Heiliggeistkirche?",
+      optionen: [
+        "Direkt beim Hauptbahnhof",
+        "Auf dem Münsterplatz",
+        "Im Mattequartier",
+        "Auf dem Gurten",
+      ],
+      richtigeAntwort: "Direkt beim Hauptbahnhof",
+    },
+    {
+      frage: "Welcher Konfession gehört die Heiliggeistkirche an?",
+      optionen: [
+        "Der evangelisch-reformierten",
+        "Der römisch-katholischen",
+        "Der christkatholischen",
+        "Der orthodoxen",
+      ],
+      richtigeAntwort: "Der evangelisch-reformierten",
+    },
+  ],
+  "franzoesische-kirche": [
+    {
+      frage:
+        "Welche Glaubensflüchtlinge gaben der Französischen Kirche ab dem 17. Jahrhundert ihren Namen?",
+      optionen: [
+        "Die Hugenotten",
+        "Die Waldenser",
+        "Die Mennoniten",
+        "Die Puritaner",
+      ],
+      richtigeAntwort: "Die Hugenotten",
+    },
+    {
+      frage: "In welchem Jahrhundert entstand die Französische Kirche?",
+      optionen: [
+        "Im 11. Jahrhundert",
+        "Im 13. Jahrhundert",
+        "Im 15. Jahrhundert",
+        "Im 17. Jahrhundert",
+      ],
+      richtigeAntwort: "Im 13. Jahrhundert",
+    },
+  ],
+  tierpark: [
+    {
+      frage: "An welchem Fluss liegt der Tierpark Dählhölzli?",
+      optionen: ["An der Aare", "An der Gürbe", "An der Sense", "An der Emme"],
+      richtigeAntwort: "An der Aare",
+    },
+    {
+      frage:
+        "Wie heisst das Tropen- und Aquarienhaus des Tierparks Dählhölzli?",
+      optionen: ["Vivarium", "Aquatis", "Terrarium Bern", "Papiliorama"],
+      richtigeAntwort: "Vivarium",
+    },
+  ],
+  "naturhistorisches-museum": [
+    {
+      frage: "Wofür war der Bernhardiner Barry zu Lebzeiten berühmt?",
+      optionen: [
+        "Als Lawinen-Rettungshund auf dem Grossen St. Bernhard",
+        "Als Wachhund des Bundeshauses",
+        "Als erster Polizeihund der Schweiz",
+        "Als Zirkushund",
+      ],
+      richtigeAntwort: "Als Lawinen-Rettungshund auf dem Grossen St. Bernhard",
+    },
+    {
+      frage:
+        "Wofür ist das Naturhistorische Museum Bern neben Barry besonders bekannt?",
+      optionen: [
+        "Für seine Tier-Dioramen",
+        "Für eine Raumfahrt-Ausstellung",
+        "Für ein Planetarium",
+        "Für lebende Tiere",
+      ],
+      richtigeAntwort: "Für seine Tier-Dioramen",
+    },
+  ],
+  universitaet: [
+    {
+      frage:
+        "Wie heisst die Anhöhe, auf der das Hauptgebäude der Universität Bern steht?",
+      optionen: [
+        "Grosse Schanze",
+        "Kleine Schanze",
+        "Länggasse",
+        "Engehalbinsel",
+      ],
+      richtigeAntwort: "Grosse Schanze",
+    },
+    {
+      frage:
+        "In welchem Jahr wurde das Hauptgebäude auf der Grossen Schanze eröffnet?",
+      optionen: ["1834", "1874", "1903", "1931"],
+      richtigeAntwort: "1903",
+    },
+  ],
+}
+for (const [id, fragen] of Object.entries(DRITTE_FRAGEN)) {
+  ZUSATZFRAGEN[id] = [...(ZUSATZFRAGEN[id] ?? []), ...fragen]
+}
+
 const QUIZZE: Record<string, Quiz[]> = Object.fromEntries(
   Object.entries(ERSTFRAGEN).map(([id, quiz]) => [
     id,
