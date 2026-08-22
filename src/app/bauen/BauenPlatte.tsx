@@ -24,6 +24,7 @@ import {
 import { useBauen } from "../useBauen"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
+import { bauePostkarte, teilePostkarte } from "./postkarte"
 import { starteBauenAr } from "./starteBauenAr"
 import { startePlattenSzene, type PlattenSteuerung } from "./startePlattenSzene"
 
@@ -97,6 +98,8 @@ export function BauenPlatte() {
           : aktion === "abbauen"
             ? "Abbauen · Hand"
             : "Wähle Block oder Werkzeug"
+  const fotoRef = useRef<(() => Promise<string>) | null>(null)
+  const [fotoLaeuft, setFotoLaeuft] = useState(false)
   const steuerung = useRef<PlattenSteuerung>({
     wahl: () => wahl,
     kannSetzen: () =>
@@ -114,6 +117,9 @@ export function BauenPlatte() {
     abbau: () => ({}),
     aufSetzen: () => {},
     aufSchlag: () => false,
+    fotoBereit: (mach) => {
+      fotoRef.current = mach
+    },
   })
 
   useEffect(() => {
@@ -217,6 +223,26 @@ export function BauenPlatte() {
     }
     setzeSlots(nextSlots)
     return true
+  }
+
+  async function machePostkarte() {
+    const mach = fotoRef.current
+    if (!mach || fotoLaeuft) return
+    setFotoLaeuft(true)
+    try {
+      const bild = await mach()
+      const blob = await bauePostkarte(bild)
+      const ausgang = await teilePostkarte(blob)
+      setHinweis(
+        ausgang === "geteilt"
+          ? "Postkarte geteilt!"
+          : "Postkarte gespeichert — schau in deine Downloads.",
+      )
+    } catch {
+      setHinweis("Postkarte hat nicht geklappt — probier es nochmal.")
+    } finally {
+      setFotoLaeuft(false)
+    }
   }
 
   useEffect(() => {
@@ -394,14 +420,33 @@ export function BauenPlatte() {
           </div>
         ) : null}
         {arStatus === "an" ? (
+          <div className="mc-ar-startzeile">
+            <button
+              type="button"
+              className="mc-btn mc-platte-ar"
+              onClick={beendeAr}
+            >
+              AR beenden
+            </button>
+            <button
+              type="button"
+              className="mc-btn mc-btn-toggle"
+              disabled={fotoLaeuft}
+              onClick={() => void machePostkarte()}
+            >
+              {fotoLaeuft ? "…" : "📮 Postkarte"}
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
-            className="mc-btn mc-platte-ar"
-            onClick={beendeAr}
+            className="mc-btn mc-btn-toggle"
+            disabled={fotoLaeuft}
+            onClick={() => void machePostkarte()}
           >
-            AR beenden
+            {fotoLaeuft ? "…" : "📮 Postkarte"}
           </button>
-        ) : null}
+        )}
         </div>
       </div>
     </section>

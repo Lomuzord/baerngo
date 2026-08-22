@@ -135,6 +135,16 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
     textur: "/bloecke/holztreppe.png",
   },
   tuer: { id: "tuer", name: "Tür", textur: "/bloecke/tuer.png" },
+  feder: { id: "feder", name: "Feder", textur: "/bloecke/feder.png" },
+  ei: { id: "ei", name: "Ei", textur: "/bloecke/ei.png" },
+  wolle: { id: "wolle", name: "Wolle", textur: "/bloecke/wolle.png" },
+  leder: { id: "leder", name: "Leder", textur: "/bloecke/leder.png" },
+  milcheimer: {
+    id: "milcheimer",
+    name: "Milcheimer",
+    textur: "/bloecke/milcheimer.png",
+  },
+  schere: { id: "schere", name: "Schere", textur: "/bloecke/schere.png" },
   zaun: { id: "zaun", name: "Zaun", textur: "/bloecke/zaun.png" },
   leiter: { id: "leiter", name: "Leiter", textur: "/bloecke/leiter.png" },
   steintreppe: {
@@ -196,6 +206,11 @@ const NICHT_SETZBAR = new Set([
   "eisenschaufel",
   "diamantschaufel",
   "hacke",
+  "feder",
+  "ei",
+  "leder",
+  "milcheimer",
+  "schere",
 ])
 
 export function istWerkzeug(id: string): boolean {
@@ -209,6 +224,8 @@ export function istWerkzeug(id: string): boolean {
     id === "eimer" ||
     id === "wassereimer" ||
     id === "hacke" ||
+    id === "schere" ||
+    id === "milcheimer" ||
     id.endsWith("schaufel")
   )
 }

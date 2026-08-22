@@ -24,15 +24,17 @@ import { umweltAusMerkmalen, type Umwelt } from "@/lib/umwelt"
 import { spieleHaptik } from "@/lib/haptik"
 import {
   legeBeuteInSlots,
+  legeBeuteInSlotsMitRest,
   nimmAnzahl,
   zaehleSlots,
 } from "@/lib/inventar"
 import { bonusDrop } from "@/lib/sammeln"
+import { istTier, tierById, tierDrops } from "@/lib/tiere"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
 import { WetterHimmel } from "./WetterHimmel"
-import { useInventar } from "./useInventar"
+import { stasheBeute, useInventar } from "./useInventar"
 import { useSpielerOrt } from "./useSpielerOrt"
 import { useWildspawn } from "./useWildspawn"
 
@@ -326,6 +328,31 @@ export function BernKarteGl({
               setHinweis("Block ist weg")
               return
             }
+            if (istTier(weg.gegenstandId)) {
+              // Tier angetippt: Tier-Beute statt Block, Kuh melkt den Eimer
+              const beute = tierDrops(
+                weg.gegenstandId,
+                zaehleSlots(slotsRef.current),
+              )
+              let basis = slotsRef.current
+              const drops = [...beute.drops]
+              if (beute.eimerWirdMilch) {
+                basis = nimmAnzahl(basis, "eimer", 1) ?? basis
+                drops.push({ gegenstandId: "milcheimer", anzahl: 1 })
+              }
+              const gelegt = legeBeuteInSlotsMitRest(basis, drops)
+              if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+              setzeSlotsRef.current(gelegt.slots)
+              spieleHaptik("sammeln")
+              const text = drops
+                .map(
+                  (stuck) =>
+                    `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
+                )
+                .join(" · ")
+              setHinweis(text)
+              return
+            }
             sammleRef.current(weg.gegenstandId)
             spieleHaptik("sammeln")
             const name = gegenstandById(weg.gegenstandId)?.name ?? weg.gegenstandId
@@ -588,6 +615,7 @@ function wildElement(
   block: WildBlock,
   onTipp: (id: string) => void,
 ) {
+  const tier = tierById(block.gegenstandId)
   const item = gegenstandById(block.gegenstandId)
   const textur = item?.textur ?? "/bloecke/erde.png"
   const seite =
@@ -598,13 +626,22 @@ function wildElement(
   root.dataset.haptik = "aus"
   root.dataset.wild = block.id
   root.dataset.umwelt = block.umwelt
-  root.setAttribute("aria-label", item?.name ?? block.gegenstandId)
+  root.setAttribute("aria-label", tier?.name ?? item?.name ?? block.gegenstandId)
   root.innerHTML = `
     <span class="mc-wild-schwebe"></span>
     <span class="mc-wild-schatten"></span>
   `
   const buehne = root.querySelector<HTMLElement>(".mc-wild-schwebe")
-  if (buehne) void maleIsoWuerfel(buehne, textur, seite)
+  if (buehne && tier) {
+    const bild = document.createElement("img")
+    bild.src = tier.sprite
+    bild.alt = ""
+    bild.draggable = false
+    bild.className = "mc-wild-tier"
+    buehne.replaceChildren(bild)
+  } else if (buehne) {
+    void maleIsoWuerfel(buehne, textur, seite)
+  }
   let start: { x: number; y: number } | null = null
   let perZeiger = false
   let perZeigerTimer = 0

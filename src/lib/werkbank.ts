@@ -362,6 +362,18 @@ const REZEPTE: readonly Rezept[] = [
     ergebnisAnzahl: 3,
   },
   {
+    id: "schere",
+    name: "Schere",
+    zutat: { eisen: 2 },
+    form: [
+      null, "eisen", null,
+      "eisen", null, null,
+      null, null, null,
+    ],
+    ergebnisId: "schere",
+    ergebnisAnzahl: 1,
+  },
+  {
     id: "brot",
     name: "Brot",
     zutat: { weizen: 3 },

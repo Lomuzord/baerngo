@@ -1,6 +1,7 @@
 import { listOrte, type Lage } from "./orte"
 import { distanzMeter, lageVersetzt } from "./reichweite"
 import { spawnErlaubt, spawnFuerUmwelt, type Umwelt } from "./umwelt"
+import { tierFuerUmwelt } from "./tiere"
 
 export const WILD_ANZAHL = 8
 export const WILD_RADIUS_MIN = 32
@@ -126,7 +127,8 @@ export function erzeugeWildbloecke(
     const umwelt = spawnErlaubt(umweltAn(lage)) ? umweltAn(lage) : "feld"
     bloecke.push({
       id: `wild-${jetzt}-${bloecke.length}-${hash(`${lage.lat}:${lage.lng}`)}`,
-      gegenstandId: spawnFuerUmwelt(umwelt, zufall),
+      gegenstandId:
+        tierFuerUmwelt(umwelt, zufall) ?? spawnFuerUmwelt(umwelt, zufall),
       lage,
       umwelt,
       seit: jetzt,

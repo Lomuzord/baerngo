@@ -36,6 +36,9 @@ export type PlattenSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
+  // Meldet eine Funktion an, die den nächsten gerenderten Frame
+  // als Daten-URL liefert (für die Postkarte).
+  fotoBereit?: (mach: () => Promise<string>) => void
 }
 
 export async function startePlattenSzene(
@@ -147,6 +150,7 @@ export async function startePlattenSzene(
     kamera.lookAt(0, 0.12, 0)
   }
 
+  let fotoWunsch: ((url: string) => void) | null = null
   let zeichnet = false
   let zeichneNochmal = false
   async function zeichneBloecke() {
@@ -407,9 +411,19 @@ export async function startePlattenSzene(
     tickAbbau(now)
     setzeKamera()
     renderer.render(szene, kamera)
+    if (fotoWunsch) {
+      // Direkt nach dem Render ist der Puffer noch gültig
+      const mach = fotoWunsch
+      fotoWunsch = null
+      mach(leinwand.toDataURL("image/png"))
+    }
     loopId = requestAnimationFrame(tick)
   }
   loopId = requestAnimationFrame(tick)
+
+  steuerung.fotoBereit?.(
+    () => new Promise<string>((res) => { fotoWunsch = res }),
+  )
 
   return () => {
     cancelAnimationFrame(loopId)

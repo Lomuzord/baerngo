@@ -42,6 +42,7 @@ export type ArSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
+  fotoBereit?: (mach: () => Promise<string>) => void
 }
 
 export type ArMeldungen = {
@@ -86,6 +87,7 @@ export async function starteBauenAr(
   // "end" sofort abfangen — die Systemgeste kann die Sitzung beenden,
   // während wir unten noch auf setSession/HitTest warten.
   let beendet = false
+  let fotoWunsch: ((url: string) => void) | null = null
   let spaeterAbbau: (() => void) | null = null
   session.addEventListener("end", () => {
     if (beendet) return
@@ -615,7 +617,17 @@ export async function starteBauenAr(
       void zeichneBloecke()
     }
     renderer.render(szene, kamera)
+    if (fotoWunsch) {
+      // Direkt nach dem Render ist der XR-Puffer noch lesbar
+      const mach = fotoWunsch
+      fotoWunsch = null
+      mach(leinwand.toDataURL("image/png"))
+    }
   })
+
+  steuerung.fotoBereit?.(
+    () => new Promise<string>((res) => { fotoWunsch = res }),
+  )
 
   spaeterAbbau = () => {
     overlay.removeEventListener("pointerdown", aufOverlayDown)

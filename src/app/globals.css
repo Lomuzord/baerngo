@@ -217,6 +217,25 @@
 /* Kein mix-blend-mode und keine Element-Opacity: beides wird über dem
    WebGL-Canvas der Karte nicht zuverlässig komposittiert — das Alpha
    steckt darum direkt in der Hintergrundfarbe. */
+/* Tier-Sprites auf der Karte: pixelig gross ziehen, leicht wippen */
+.mc-wild-tier {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  animation: mc-tier-wippen 1.6s ease-in-out infinite;
+}
+
+@keyframes mc-tier-wippen {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(1);
+  }
+  50% {
+    transform: translateY(-7%) scaleX(-1);
+  }
+}
+
 .mc-himmel-tint {
   transition: background 2s ease;
 }

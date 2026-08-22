@@ -137,6 +137,7 @@ const HAERTE: Record<string, number> = {
   tuer: 1,
   zaun: 0.9,
   leiter: 0.5,
+  wolle: 0.8,
 }
 
 

@@ -36,7 +36,8 @@ describe("erzeugeWildbloecke", () => {
       expect(distanz).toBeGreaterThanOrEqual(WILD_RADIUS_MIN - 2)
       expect(distanz).toBeLessThanOrEqual(WILD_RADIUS_MAX + 2)
       expect(block.umwelt).toBe("park")
-      expect(block.gegenstandId).toMatch(/gras|stamm|laub|moosstein/)
+      // Parks liefern Park-Blöcke — oder neuerdings mal ein Huhn
+      expect(block.gegenstandId).toMatch(/gras|stamm|laub|moosstein|huhn/)
     }
     expect(entferneWildBlock(bloecke, bloecke[0]!.id)).toHaveLength(
       WILD_ANZAHL - 1,
