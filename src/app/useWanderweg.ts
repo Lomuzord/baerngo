@@ -1,6 +1,6 @@
 "use client"
 
-// Zählt echte Gehstrecke für die Wander-Truhe und sammelt Brunnen
+// Meldet echte Gehstrecke an die Tagesaufgaben und sammelt Brunnen
 // im Vorbeigehen — beides direkt aus den GPS-Fixen des Spielers.
 
 import { useEffect, useRef, useState } from "react"
@@ -14,23 +14,16 @@ import {
 } from "@/lib/brunnen"
 import type { Lage } from "@/lib/orte"
 import type { Beute } from "@/lib/sammeln"
-import {
-  distanzZuwachs,
-  oeffneWanderTruhe,
-  parseWanderung,
-  WANDER_ZIEL_METER,
-} from "@/lib/wanderung"
+import { distanzZuwachs } from "@/lib/wanderung"
 import type { SpielerOrt } from "./useSpielerOrt"
 import { meldeTagesEreignis } from "./tagesEreignis"
 
-const WANDER_SPEICHER = "baerngo-wanderung"
 const BRUNNEN_SPEICHER = "baerngo-brunnen"
 
 export function useWanderweg(
   spieler: SpielerOrt,
   aufEreignis: (hinweis: string, beute: Beute[]) => void,
 ) {
-  const [meter, setMeter] = useState(0)
   const [brunnen, setBrunnen] = useState<BrunnenStand>({
     gesammelt: [],
     belohnt: false,
@@ -40,7 +33,6 @@ export function useWanderweg(
   aufEreignisRef.current = aufEreignis
 
   useEffect(() => {
-    setMeter(parseWanderung(leseRoh(WANDER_SPEICHER)))
     setBrunnen(parseBrunnenStand(leseRoh(BRUNNEN_SPEICHER)))
   }, [])
 
@@ -50,14 +42,7 @@ export function useWanderweg(
     if (!lage) return
     const zuwachs = distanzZuwachs(letzteLage.current, lage, genauigkeit)
     letzteLage.current = lage
-    if (zuwachs > 0) {
-      meldeTagesEreignis("meter", zuwachs)
-      setMeter((bisher) => {
-        const danach = Math.min(WANDER_ZIEL_METER, bisher + zuwachs)
-        schreibe(WANDER_SPEICHER, danach)
-        return danach
-      })
-    }
+    if (zuwachs > 0) meldeTagesEreignis("meter", zuwachs)
     // Brunnen im Vorbeigehen einsammeln
     setBrunnen((bisher) => {
       const neu = neuGesammelt(bisher.gesammelt, lage)
@@ -83,15 +68,7 @@ export function useWanderweg(
     })
   }, [lage, genauigkeit])
 
-  function oeffneTruhe(): Beute[] | null {
-    if (meter < WANDER_ZIEL_METER) return null
-    const beute = oeffneWanderTruhe()
-    setMeter(0)
-    schreibe(WANDER_SPEICHER, 0)
-    return beute
-  }
-
-  return { meter, brunnen, oeffneTruhe }
+  return { brunnen }
 }
 
 function leseRoh(schluessel: string): unknown {

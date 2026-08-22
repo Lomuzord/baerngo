@@ -63,9 +63,9 @@ function aufgabenPool(wuerfel: () => number): Aufgabe[] {
     },
     {
       id: "wandern",
-      text: "Laufe 1 km",
+      text: "Laufe 2 km",
       art: "meter",
-      ziel: 1000,
+      ziel: 2000,
     },
   ]
 }

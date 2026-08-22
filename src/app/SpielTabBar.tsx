@@ -8,7 +8,6 @@ const TABS = [
   { href: "/inventar", label: "Inventar" },
   { href: "/werkbank", label: "Werkbank" },
   { href: "/bauen", label: "Bauen" },
-  { href: "/album", label: "Album" },
 ] as const
 
 export function SpielTabBar() {

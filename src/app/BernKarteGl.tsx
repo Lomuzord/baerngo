@@ -31,7 +31,6 @@ import {
 import { bonusDrop } from "@/lib/sammeln"
 import { istTier, tierById, tierDrops } from "@/lib/tiere"
 import { BRUNNEN } from "@/lib/brunnen"
-import { WANDER_ZIEL_METER, wanderText } from "@/lib/wanderung"
 import { useWanderweg } from "./useWanderweg"
 import {
   AUFGABEN_EREIGNIS,
@@ -101,7 +100,7 @@ export function BernKarteGl({
   const umweltAnRef = useRef(umweltAn)
   umweltAnRef.current = umweltAn
   const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit)
-  const { meter, brunnen, oeffneTruhe } = useWanderweg(
+  const { brunnen } = useWanderweg(
     spieler,
     (text, beute) => {
       spieleHaptik("sammeln")
@@ -520,35 +519,6 @@ export function BernKarteGl({
       <button
         type="button"
         className={
-          meter >= WANDER_ZIEL_METER
-            ? "mc-wander-chip mc-wander-bereit"
-            : "mc-wander-chip"
-        }
-        onClick={() => {
-          const beute = oeffneTruhe()
-          if (!beute) return
-          const gelegt = legeBeuteInSlotsMitRest(slotsRef.current, beute)
-          if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
-          setzeSlotsRef.current(gelegt.slots)
-          spieleHaptik("truhe")
-          const text = beute
-            .map(
-              (stuck) =>
-                `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
-            )
-            .join(" · ")
-          setHinweis(`Wander-Truhe geöffnet! ${text}`)
-        }}
-        disabled={meter < WANDER_ZIEL_METER}
-        aria-label="Wander-Truhe"
-      >
-        {meter >= WANDER_ZIEL_METER
-          ? "🧰 Wander-Truhe öffnen!"
-          : `🥾 ${wanderText(meter)}`}
-      </button>
-      <button
-        type="button"
-        className={
           alleGeschafft(aufgaben, tagesStand) && !tagesStand.belohnt
             ? "mc-aufgaben-chip mc-wander-bereit"
             : "mc-aufgaben-chip"
@@ -594,11 +564,11 @@ export function BernKarteGl({
                 if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
                 setzeSlotsRef.current(gelegt.slots)
                 spieleHaptik("truhe")
-                setHinweis("Tagesaufgaben geschafft! +2 Diamant · +3 Gold")
+                setHinweis("Tages-Truhe geöffnet! +2 Diamant · +3 Gold")
                 setAufgabenOffen(false)
               }}
             >
-              Belohnung abholen
+              🧰 Tages-Truhe öffnen
             </button>
           ) : null}
           {tagesStand.belohnt ? (

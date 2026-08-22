@@ -204,26 +204,6 @@
   }
 }
 
-/* Wander-Truhe: kleiner Fortschritts-Chip auf der Karte */
-.mc-wander-chip {
-  position: absolute;
-  left: 0.6rem;
-  top: 2.9rem;
-  z-index: 5;
-  font-family: var(--font-vt), ui-monospace, monospace;
-  font-size: 0.95rem;
-  color: #ffe9c7;
-  background: #2b2118e6;
-  border: 2px solid #4a3a28;
-  border-radius: 8px;
-  padding: 0.25rem 0.5rem;
-  text-shadow: 1px 1px 0 #000;
-}
-
-.mc-wander-chip:disabled {
-  opacity: 1;
-}
-
 .mc-wander-bereit {
   border-color: #f1c232;
   color: #ffd75e;
@@ -314,7 +294,7 @@
 .mc-aufgaben-chip {
   position: absolute;
   left: 0.6rem;
-  top: 5rem;
+  top: 2.9rem;
   z-index: 5;
   font-family: var(--font-vt), ui-monospace, monospace;
   font-size: 0.95rem;
@@ -330,7 +310,7 @@
 .mc-aufgaben-panel {
   position: absolute;
   left: 0.6rem;
-  top: 7.1rem;
+  top: 5rem;
   z-index: 6;
   width: min(86vw, 20rem);
   padding: 0.7rem;
@@ -531,45 +511,6 @@
   object-fit: contain;
   background: linear-gradient(#8fd0f5, #eef8fe);
   image-rendering: pixelated;
-}
-
-/* Postkarten-Dialog: Vorschau + Gruss + Stil, auch im AR-Overlay */
-.mc-postkarte-dialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  translate: -50% -50%;
-  z-index: 90;
-  width: min(94vw, 30rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.8rem;
-  background: #2b2118f5;
-  border: 3px solid #f1c232;
-  border-radius: 12px;
-  box-shadow: 0 6px 0 #0008;
-  pointer-events: auto;
-}
-
-.mc-postkarte-vorschau {
-  width: 100%;
-  height: auto;
-  border: 2px solid #4a3a28;
-  border-radius: 6px;
-  background: #111;
-}
-
-.mc-postkarte-text {
-  font-family: var(--font-vt), ui-monospace, monospace;
-  font-size: 1.05rem;
-  color: #2b2118;
-  background: #f7f2e2;
-  border: 3px solid #4a3a28;
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  user-select: text;
-  -webkit-user-select: text;
 }
 
 .mc-ar-startzeile {
@@ -1636,7 +1577,7 @@
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: #2b2118;
   border-top: 4px solid #111;
   padding-bottom: env(safe-area-inset-bottom);

@@ -36,18 +36,6 @@ export type PlattenSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
-  // Meldet eine Funktion an, die den nächsten gerenderten Frame
-  // als Daten-URL liefert (für die Postkarte).
-  fotoBereit?: (
-    mach: () => Promise<{ vordergrund: string; hintergrund?: string }>,
-  ) => void
-  // Untergrund-Mine: Grabstand pro Spalte, nächste Schicht, Grabschlag
-  mineSpalten?: () => { ix: number; iz: number; tiefe: number }[]
-  mineNaechste?: (
-    ix: number,
-    iz: number,
-  ) => { tiefe: number; art: string } | null
-  aufMineSchlag?: (ix: number, iz: number) => boolean
 }
 
 export async function startePlattenSzene(
@@ -126,46 +114,6 @@ export async function startePlattenSzene(
   szene.add(visier)
 
   const wuerfel = new Map<string, InstanceType<typeof THREE.Mesh>>()
-  // Ausgehobene Spalten als dunkle "Loch"-Kacheln auf der Platte,
-  // mit der Textur der nächsten Schicht als Grubenboden.
-  const gruben = new Map<string, InstanceType<typeof THREE.Mesh>>()
-  let grubenSignatur = ""
-  async function zeichneGruben() {
-    const spalten = steuerung.mineSpalten?.() ?? []
-    const leben = new Set<string>()
-    for (const spalte of spalten) {
-      const key = `${spalte.ix},${spalte.iz}`
-      leben.add(key)
-      const naechste = steuerung.mineNaechste?.(spalte.ix, spalte.iz)
-      let mesh = gruben.get(key)
-      if (!mesh) {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(kante * 0.94, 0.012, kante * 0.94),
-          new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 }),
-        )
-        const pose = poseVonZelle(
-          { ix: spalte.ix, iy: 0, iz: spalte.iz },
-          TISCH_EBENE,
-        )
-        mesh.position.set(pose.x, 0.012, pose.z)
-        mesh.userData.mine = key
-        szene.add(mesh)
-        gruben.set(key, mesh)
-      }
-      // Grubenboden: Textur der nächsten Schicht, mit Tiefe dunkler
-      const art = naechste?.art ?? "stein"
-      const material = (await materialFuerBlock(THREE, art)).clone()
-      const dunkel = Math.max(0.15, 1 - spalte.tiefe * 0.055)
-      material.color.setScalar(dunkel)
-      mesh.material = material
-    }
-    for (const [key, mesh] of gruben) {
-      if (leben.has(key)) continue
-      szene.remove(mesh)
-      mesh.geometry.dispose()
-      gruben.delete(key)
-    }
-  }
   const ray = new THREE.Raycaster()
   const zeiger = new THREE.Vector2()
   let rotY = 0.72
@@ -199,9 +147,6 @@ export async function startePlattenSzene(
     kamera.lookAt(0, 0.12, 0)
   }
 
-  let fotoWunsch:
-    | ((foto: { vordergrund: string; hintergrund?: string }) => void)
-    | null = null
   let zeichnet = false
   let zeichneNochmal = false
   async function zeichneBloecke() {
@@ -298,40 +243,14 @@ export async function startePlattenSzene(
       { x: hit.point.x, y: 0, z: hit.point.z },
       TISCH_EBENE,
     )
-    const block = blockObenInSpalte(steuerung.bloecke(), raster)?.id
-    if (block) return block
-    // Leere Spalte: in die Mine graben, wenn dort noch etwas liegt
-    if (
-      Math.abs(raster.ix) <= EBENE_RADIUS_ZELLEN &&
-      Math.abs(raster.iz) <= EBENE_RADIUS_ZELLEN &&
-      steuerung.mineNaechste?.(raster.ix, raster.iz)
-    ) {
-      return `mine:${raster.ix},${raster.iz}`
-    }
-    return undefined
+    return blockObenInSpalte(steuerung.bloecke(), raster)?.id
   }
-
-  function mineMeshFuer(abbau: string) {
-    return gruben.get(abbau.slice(5)) ?? grabDecal
-  }
-
-  // Beim Angraben einer unberührten Spalte gibt es noch keine Grube —
-  // dieses Decal trägt dann die Riss-Anzeige.
-  const grabDecal = new THREE.Mesh(
-    new THREE.BoxGeometry(kante * 0.94, 0.012, kante * 0.94),
-    new THREE.MeshStandardMaterial({ color: 0x2b2118, roughness: 1 }),
-  )
-  grabDecal.visible = false
-  szene.add(grabDecal)
 
   function brichAbbau() {
     if (abbauId) {
-      const mesh = abbauId.startsWith("mine:")
-        ? mineMeshFuer(abbauId)
-        : wuerfel.get(abbauId)
+      const mesh = wuerfel.get(abbauId)
       if (mesh) setzeRiss(THREE, szene, mesh, 0, kante)
     }
-    grabDecal.visible = false
     abbauId = null
   }
 
@@ -344,32 +263,6 @@ export async function startePlattenSzene(
 
   function tickAbbau(jetzt: number) {
     if (!ziehen || hatGezogen || !abbauId) return
-    if (abbauId.startsWith("mine:")) {
-      const [ix, iz] = abbauId
-        .slice(5)
-        .split(",")
-        .map((wert) => Number.parseInt(wert, 10))
-      const naechste = steuerung.mineNaechste?.(ix!, iz!)
-      if (!naechste) {
-        brichAbbau()
-        return
-      }
-      const mesh = mineMeshFuer(abbauId)
-      if (mesh === grabDecal) {
-        const pose = poseVonZelle({ ix: ix!, iy: 0, iz: iz! }, TISCH_EBENE)
-        grabDecal.position.set(pose.x, 0.012, pose.z)
-        grabDecal.visible = true
-      }
-      const dauer = abbaudauerMs(naechste.art, steuerung.werkzeug())
-      const anteil = (jetzt - abbauStart) / dauer
-      setzeRiss(THREE, szene, mesh, rissStufeVonAnteil(anteil), kante)
-      if (anteil < 1) return
-      hatGehalten = true
-      brichAbbau()
-      steuerung.aufMineSchlag?.(ix!, iz!)
-      void zeichneGruben()
-      return
-    }
     const block = steuerung.bloecke().find((eintrag) => eintrag.id === abbauId)
     const mesh = wuerfel.get(abbauId)
     if (!block || !mesh) {
@@ -510,33 +403,13 @@ export async function startePlattenSzene(
       signatur = jetzt
       void zeichneBloecke()
     }
-    const grubenJetzt = (steuerung.mineSpalten?.() ?? [])
-      .map((spalte) => `${spalte.ix},${spalte.iz}:${spalte.tiefe}`)
-      .join("|")
-    if (grubenJetzt !== grubenSignatur) {
-      grubenSignatur = grubenJetzt
-      void zeichneGruben()
-    }
     for (const mesh of wuerfel.values()) tickFall(mesh, dt)
     tickAbbau(now)
     setzeKamera()
     renderer.render(szene, kamera)
-    if (fotoWunsch) {
-      // Direkt nach dem Render ist der Puffer noch gültig
-      const mach = fotoWunsch
-      fotoWunsch = null
-      mach({ vordergrund: leinwand.toDataURL("image/png") })
-    }
     loopId = requestAnimationFrame(tick)
   }
   loopId = requestAnimationFrame(tick)
-
-  steuerung.fotoBereit?.(
-    () =>
-      new Promise<{ vordergrund: string; hintergrund?: string }>((res) => {
-        fotoWunsch = res
-      }),
-  )
 
   return () => {
     cancelAnimationFrame(loopId)
@@ -547,11 +420,6 @@ export async function startePlattenSzene(
     leinwand.removeEventListener("pointercancel", onUp)
     leinwand.removeEventListener("wheel", onWheel)
     renderer.dispose()
-    for (const mesh of gruben.values()) {
-      entferneRiss(szene, mesh)
-      mesh.geometry.dispose()
-    }
-    grabDecal.geometry.dispose()
     for (const mesh of wuerfel.values()) {
       entferneRiss(szene, mesh)
       mesh.geometry.dispose()

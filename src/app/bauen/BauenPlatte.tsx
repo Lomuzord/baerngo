@@ -22,18 +22,8 @@ import {
   zaehleSlots,
 } from "@/lib/inventar"
 import { useBauen } from "../useBauen"
-import { useMine } from "../useMine"
-import { meldeTagesEreignis } from "../tagesEreignis"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
-import {
-  bauePostkarte,
-  POSTKARTEN_STILE,
-  teilePostkarte,
-  zeichnePostkarte,
-  type PostkartenStil,
-  type SzenenFoto,
-} from "./postkarte"
 import { starteBauenAr } from "./starteBauenAr"
 import { startePlattenSzene, type PlattenSteuerung } from "./startePlattenSzene"
 
@@ -44,7 +34,6 @@ export function BauenPlatte() {
   const sitzung = useRef<{ beenden: () => void } | null>(null)
   const { slots, inventar, setzeSlots } = useInventar()
   const { bloecke, setze, nimmWeg, ersetze } = useBauen()
-  const { spalten: mineSpalten, naechsteFuer, grabe } = useMine()
   const { haltbarkeitFuer, setzeHaltbarkeitFuer, maximumFuer } = usePickel()
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
@@ -108,18 +97,6 @@ export function BauenPlatte() {
           : aktion === "abbauen"
             ? "Abbauen · Hand"
             : "Wähle Block oder Werkzeug"
-  const fotoRef = useRef<(() => Promise<SzenenFoto>) | null>(null)
-  const [fotoLaeuft, setFotoLaeuft] = useState(false)
-  const [foto, setFoto] = useState<SzenenFoto | null>(null)
-  const [gruss, setGruss] = useState("Grüsse us Bärn!")
-  const [stil, setStil] = useState<PostkartenStil>("klassisch")
-  const vorschau = useRef<HTMLCanvasElement>(null)
-
-  // Live-Vorschau neu zeichnen, wenn Foto, Gruss oder Stil wechseln
-  useEffect(() => {
-    if (!foto || !vorschau.current) return
-    void zeichnePostkarte(vorschau.current, foto, { gruss, stil })
-  }, [foto, gruss, stil])
   const steuerung = useRef<PlattenSteuerung>({
     wahl: () => wahl,
     kannSetzen: () =>
@@ -137,12 +114,6 @@ export function BauenPlatte() {
     abbau: () => ({}),
     aufSetzen: () => {},
     aufSchlag: () => false,
-    fotoBereit: (mach) => {
-      fotoRef.current = mach
-    },
-    mineSpalten: () => [],
-    mineNaechste: () => null,
-    aufMineSchlag: () => false,
   })
 
   useEffect(() => {
@@ -190,10 +161,6 @@ export function BauenPlatte() {
     }
     steuerung.current.aufSchlag = (blockId) =>
       schlageGesetzt(blockId, steuerung.current.werkzeug())
-    steuerung.current.mineSpalten = () => mineSpalten
-    steuerung.current.mineNaechste = (ix, iz) => naechsteFuer(ix, iz)
-    steuerung.current.aufMineSchlag = (ix, iz) =>
-      grabeMine(ix, iz, steuerung.current.werkzeug())
   })
 
   function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {
@@ -248,82 +215,6 @@ export function BauenPlatte() {
       spieleHaptik("abbauen")
       setHinweis("Abgebaut.")
     }
-    setzeSlots(nextSlots)
-    return true
-  }
-
-  async function machePostkarte() {
-    const mach = fotoRef.current
-    if (!mach || fotoLaeuft) return
-    setFotoLaeuft(true)
-    try {
-      setFoto(await mach())
-    } catch {
-      setHinweis("Foto hat nicht geklappt — probier es nochmal.")
-    } finally {
-      setFotoLaeuft(false)
-    }
-  }
-
-  async function sendePostkarte() {
-    if (!foto || fotoLaeuft) return
-    setFotoLaeuft(true)
-    try {
-      const blob = await bauePostkarte(foto, { gruss, stil })
-      const ausgang = await teilePostkarte(blob)
-      setFoto(null)
-      setHinweis(
-        ausgang === "geteilt"
-          ? "Postkarte geteilt!"
-          : "Postkarte gespeichert — schau in deine Downloads.",
-      )
-    } catch {
-      setHinweis("Postkarte hat nicht geklappt — probier es nochmal.")
-    } finally {
-      setFotoLaeuft(false)
-    }
-  }
-
-  function grabeMine(ix: number, iz: number, werkzeug: string | null): boolean {
-    const ergebnis = grabe(ix, iz)
-    if (!ergebnis) {
-      spieleHaptik("rattle")
-      setHinweis("Grundgestein — tiefer geht es hier nicht.")
-      return false
-    }
-    const drops = ernteDrops(ergebnis.art, abbauDrop)
-    const gelegt = legeBeuteInSlotsMitRest(slots, drops)
-    if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
-    let nextSlots = gelegt.slots
-    for (const stuck of drops) {
-      meldeTagesEreignis("sammeln", stuck.anzahl, stuck.gegenstandId)
-    }
-    if (werkzeug && (istPickel(werkzeug) || istSchaufel(werkzeug))) {
-      const max = maximumFuer(werkzeug)
-      const bisher = haltbarkeitFuer(werkzeug)
-      const bar = bisher > 0 ? bisher : max
-      const nutzung = nutzePickel(zaehleSlots(nextSlots), bar, werkzeug)
-      setzeHaltbarkeitFuer(werkzeug, nutzung.haltbarkeit)
-      if (nutzung.zerbrochen) {
-        nextSlots = nimmAnzahl(nextSlots, werkzeug, 1) ?? nextSlots
-        spieleHaptik("zerbrochen")
-        setHinweis(
-          istSchaufel(werkzeug)
-            ? "Die Schaufel ist zerbrochen."
-            : "Die Spitzhacke ist zerbrochen.",
-        )
-        setzeSlots(nextSlots)
-        return true
-      }
-    }
-    spieleHaptik("abbauen")
-    const namen = drops
-      .map(
-        (stuck) =>
-          `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
-      )
-      .join(" · ")
-    setHinweis(`${namen} · Tiefe ${ergebnis.tiefe}`)
     setzeSlots(nextSlots)
     return true
   }
@@ -502,80 +393,15 @@ export function BauenPlatte() {
             </button>
           </div>
         ) : null}
-        {foto ? (
-          <div className="mc-postkarte-dialog">
-            <canvas ref={vorschau} className="mc-postkarte-vorschau" />
-            <input
-              type="text"
-              className="mc-postkarte-text"
-              value={gruss}
-              maxLength={26}
-              placeholder="Dein Gruss…"
-              onChange={(event) => setGruss(event.target.value)}
-            />
-            <div className="mc-varianten">
-              {POSTKARTEN_STILE.map((eintrag) => (
-                <button
-                  key={eintrag.id}
-                  type="button"
-                  className={
-                    stil === eintrag.id
-                      ? "mc-btn mc-btn-toggle mc-btn-an"
-                      : "mc-btn mc-btn-toggle"
-                  }
-                  onClick={() => setStil(eintrag.id)}
-                >
-                  {eintrag.name}
-                </button>
-              ))}
-            </div>
-            <div className="mc-ar-startzeile">
-              <button
-                type="button"
-                className="mc-btn mc-platte-ar"
-                disabled={fotoLaeuft}
-                onClick={() => void sendePostkarte()}
-              >
-                {fotoLaeuft ? "…" : "Teilen / Speichern"}
-              </button>
-              <button
-                type="button"
-                className="mc-btn mc-btn-toggle"
-                onClick={() => setFoto(null)}
-              >
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        ) : null}
         {arStatus === "an" ? (
-          <div className="mc-ar-startzeile">
-            <button
-              type="button"
-              className="mc-btn mc-platte-ar"
-              onClick={beendeAr}
-            >
-              AR beenden
-            </button>
-            <button
-              type="button"
-              className="mc-btn mc-btn-toggle"
-              disabled={fotoLaeuft}
-              onClick={() => void machePostkarte()}
-            >
-              {fotoLaeuft ? "…" : "📮 Postkarte"}
-            </button>
-          </div>
-        ) : (
           <button
             type="button"
-            className="mc-btn mc-btn-toggle"
-            disabled={fotoLaeuft}
-            onClick={() => void machePostkarte()}
+            className="mc-btn mc-platte-ar"
+            onClick={beendeAr}
           >
-            {fotoLaeuft ? "…" : "📮 Postkarte"}
+            AR beenden
           </button>
-        )}
+        ) : null}
         </div>
       </div>
     </section>

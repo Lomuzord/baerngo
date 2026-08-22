@@ -1,5 +1,6 @@
 "use client"
 
+import { albumGegenstaende, parseAlbum } from "@/lib/album"
 import { BRUNNEN, parseBrunnenStand } from "@/lib/brunnen"
 import { useEffect, useRef, useState } from "react"
 import { anzeigeHaltbarkeit } from "@/lib/abbauen"
@@ -36,6 +37,21 @@ export function InventarList() {
   const name = cursor ? gegenstandById(cursor.id)?.name : null
 
   const [brunnenGesammelt, setBrunnenGesammelt] = useState<string[]>([])
+  const [entdeckt, setEntdeckt] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const lies = () => {
+      try {
+        const roh = window.localStorage.getItem("baerngo-album")
+        setEntdeckt(new Set(parseAlbum(roh ? JSON.parse(roh) : [])))
+      } catch {
+        setEntdeckt(new Set())
+      }
+    }
+    lies()
+    window.addEventListener("baerngo-album-neu", lies)
+    return () => window.removeEventListener("baerngo-album-neu", lies)
+  }, [])
+  const albumAlle = albumGegenstaende()
   useEffect(() => {
     try {
       const roh = window.localStorage.getItem("baerngo-brunnen")
@@ -68,6 +84,27 @@ export function InventarList() {
           {cursor.anzahl > 1 ? ` ×${cursor.anzahl}` : ""}
         </p>
       ) : null}
+      <p className="mc-abzeichen-titel">
+        Sammelalbum · {entdeckt.size}/{albumAlle.length} entdeckt
+      </p>
+      <ol className="mc-album" aria-label="Sammelalbum">
+        {albumAlle.map((gegenstand) => {
+          const da = entdeckt.has(gegenstand.id)
+          return (
+            <li
+              key={gegenstand.id}
+              className={da ? "mc-album-karte" : "mc-album-karte mc-album-fehlt"}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={gegenstand.textur}
+                alt={da ? gegenstand.name : "Unentdeckt"}
+              />
+              <span>{da ? gegenstand.name : "???"}</span>
+            </li>
+          )
+        })}
+      </ol>
       <p className="mc-abzeichen-titel">
         Brunnen-Abzeichen · {brunnenGesammelt.length}/{BRUNNEN.length}
       </p>

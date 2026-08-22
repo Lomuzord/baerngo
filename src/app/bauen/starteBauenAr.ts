@@ -42,9 +42,6 @@ export type ArSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
-  fotoBereit?: (
-    mach: () => Promise<{ vordergrund: string; hintergrund?: string }>,
-  ) => void
 }
 
 export type ArMeldungen = {
@@ -74,13 +71,7 @@ export async function starteBauenAr(
   const THREE = await import("three")
   const session = await xr.requestSession(modus, {
     requiredFeatures: webXrFeatures(),
-    optionalFeatures: [
-      "dom-overlay",
-      "plane-detection",
-      "light-estimation",
-      // Für die Postkarte: echtes Kamerabild hinter den Blöcken
-      "camera-access",
-    ],
+    optionalFeatures: ["dom-overlay", "plane-detection", "light-estimation"],
     domOverlay: { root: overlay },
   })
 
@@ -95,9 +86,6 @@ export async function starteBauenAr(
   // "end" sofort abfangen — die Systemgeste kann die Sitzung beenden,
   // während wir unten noch auf setSession/HitTest warten.
   let beendet = false
-  let fotoWunsch:
-    | ((foto: { vordergrund: string; hintergrund?: string }) => void)
-    | null = null
   let spaeterAbbau: (() => void) | null = null
   session.addEventListener("end", () => {
     if (beendet) return
@@ -494,9 +482,7 @@ export async function starteBauenAr(
     return (
       ziel instanceof HTMLElement &&
       Boolean(
-        ziel.closest(
-          "button, a, input, label, .mc-hotbar, .mc-hotbar-raster, .mc-postkarte-dialog",
-        ),
+        ziel.closest("button, a, input, label, .mc-hotbar, .mc-hotbar-raster"),
       )
     )
   }
@@ -629,97 +615,7 @@ export async function starteBauenAr(
       void zeichneBloecke()
     }
     renderer.render(szene, kamera)
-    if (fotoWunsch) {
-      // Direkt nach dem Render ist der XR-Puffer noch lesbar; das
-      // Kamerabild gibt es nur hier im rAF via Raw Camera Access.
-      const mach = fotoWunsch
-      fotoWunsch = null
-      mach({
-        vordergrund: leinwand.toDataURL("image/png"),
-        hintergrund: leseKameraBild(frame) ?? undefined,
-      })
-    }
   })
-
-  // Raw Camera Access (Chrome Android): das echte Kamerabild des
-  // Frames als JPEG lesen — wenn das Gerät es nicht kann, undefined.
-  function leseKameraBild(frame: XRFrame | undefined): string | null {
-    if (!frame) return null
-    try {
-      const referenz = renderer.xr.getReferenceSpace()
-      if (!referenz) return null
-      const pose = frame.getViewerPose(referenz)
-      type KameraView = XRView & {
-        camera?: { width: number; height: number }
-      }
-      const view = pose?.views.find(
-        (eintrag) => (eintrag as KameraView).camera,
-      ) as KameraView | undefined
-      const xrKamera = view?.camera
-      if (!xrKamera) return null
-      const BindingKlasse = (
-        window as unknown as {
-          XRWebGLBinding?: new (
-            session: XRSession,
-            gl: WebGLRenderingContext,
-          ) => { getCameraImage: (kamera: unknown) => WebGLTexture | null }
-        }
-      ).XRWebGLBinding
-      if (!BindingKlasse) return null
-      const gl = renderer.getContext()
-      const binding = new BindingKlasse(session, gl)
-      const textur = binding.getCameraImage(xrKamera)
-      if (!textur) return null
-      const w = xrKamera.width
-      const h = xrKamera.height
-      const fbo = gl.createFramebuffer()
-      const vorher = gl.getParameter(
-        gl.FRAMEBUFFER_BINDING,
-      ) as WebGLFramebuffer | null
-      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
-      gl.framebufferTexture2D(
-        gl.FRAMEBUFFER,
-        gl.COLOR_ATTACHMENT0,
-        gl.TEXTURE_2D,
-        textur,
-        0,
-      )
-      let daten: Uint8Array | null = null
-      if (
-        gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
-      ) {
-        daten = new Uint8Array(w * h * 4)
-        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, daten)
-      }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, vorher)
-      gl.deleteFramebuffer(fbo)
-      if (!daten) return null
-      // GL liest von unten nach oben — beim Umkopieren spiegeln
-      const flach = document.createElement("canvas")
-      flach.width = w
-      flach.height = h
-      const ctx = flach.getContext("2d")
-      if (!ctx) return null
-      const bild = ctx.createImageData(w, h)
-      for (let y = 0; y < h; y++) {
-        bild.data.set(
-          daten.subarray((h - 1 - y) * w * 4, (h - y) * w * 4),
-          y * w * 4,
-        )
-      }
-      ctx.putImageData(bild, 0, 0)
-      return flach.toDataURL("image/jpeg", 0.9)
-    } catch {
-      return null
-    }
-  }
-
-  steuerung.fotoBereit?.(
-    () =>
-      new Promise<{ vordergrund: string; hintergrund?: string }>((res) => {
-        fotoWunsch = res
-      }),
-  )
 
   spaeterAbbau = () => {
     overlay.removeEventListener("pointerdown", aufOverlayDown)
