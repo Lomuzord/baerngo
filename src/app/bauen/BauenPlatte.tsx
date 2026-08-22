@@ -9,18 +9,19 @@ import {
   type AbbauStand,
 } from "@/lib/abbauen"
 import { aktionFuerHand, kannBlockSetzen } from "@/lib/bauen"
-import { ernteDrops, kannPflanzen } from "@/lib/wachstum"
+import { ernteDrops, istPflanze, kannPflanzen } from "@/lib/wachstum"
 import { gegenstandById, istSetzbar } from "@/lib/gegenstaende"
 import { spieleHaptik } from "@/lib/haptik"
 import {
   HOTBAR_LAENGE,
   legeBeuteInSlots,
+  legeBeuteInSlotsMitRest,
   nimmAnzahl,
   nimmVonIndex,
   zaehleSlots,
 } from "@/lib/inventar"
 import { useBauen } from "../useBauen"
-import { useInventar } from "../useInventar"
+import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
 import { starteBauenAr } from "./starteBauenAr"
 import { startePlattenSzene, type PlattenSteuerung } from "./startePlattenSzene"
@@ -138,6 +139,7 @@ export function BauenPlatte() {
             { gegenstandId: "eimer", anzahl: 1 },
           ]),
         )
+        setWahlIndex(null)
         spieleHaptik("setzen")
         setHinweis("Wasser platziert — der Eimer ist wieder leer.")
         return
@@ -157,7 +159,21 @@ export function BauenPlatte() {
     if (!weg) return false
     nimmWeg(blockId)
     const drops = ernteDrops(weg.gegenstandId, abbauDrop)
-    let nextSlots = drops.length ? legeBeuteInSlots(slots, drops) : slots
+    // Pflanzen direkt darüber verlieren ihren Boden und poppen mit ab
+    const pflanzeOben = bloecke.find(
+      (block) =>
+        istPflanze(block.gegenstandId) &&
+        block.zelle.ix === weg.zelle.ix &&
+        block.zelle.iz === weg.zelle.iz &&
+        block.zelle.iy === weg.zelle.iy + 1,
+    )
+    if (pflanzeOben) {
+      nimmWeg(pflanzeOben.id)
+      drops.push(...ernteDrops(pflanzeOben.gegenstandId, abbauDrop))
+    }
+    const gelegt = legeBeuteInSlotsMitRest(slots, drops)
+    if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+    let nextSlots = gelegt.slots
     if (werkzeug && istPickel(werkzeug)) {
       const max = maximumFuer(werkzeug)
       const bisher = haltbarkeitFuer(werkzeug)

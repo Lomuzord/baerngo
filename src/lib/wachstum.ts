@@ -7,6 +7,15 @@ import { EBENE_RADIUS_ZELLEN, PLATTE_MAX_HOEHE, type Zelle } from "./spielflaech
 export const WACHSZEIT_BAUM_MS = 5 * 60_000
 export const WACHSZEIT_WEIZEN_MS = 3 * 60_000
 
+// Pflanzen: brauchen Boden unter sich und poppen ab, wenn er verschwindet.
+export function istPflanze(gegenstandId: string): boolean {
+  return (
+    gegenstandId === "setzling" ||
+    gegenstandId === "samen" ||
+    gegenstandId === "weizen"
+  )
+}
+
 // Setzlinge und Samen brauchen Boden unter sich: die Rasenplatte
 // selbst (iy 0) oder einen Erd-/Gras-Block direkt darunter.
 export function kannPflanzen(

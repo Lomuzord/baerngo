@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  legeBeuteInSlots,
   legeBeuteInSlotsMitRest,
   leereSlots,
   parseSlots,
@@ -53,24 +52,35 @@ export function useInventar() {
   }, [])
 
   const sammle = useCallback((ressourceId: string, anzahl = 1) => {
-    setSlots((bisher) => {
-      const danach = legeBeuteInSlots(bisher, [
-        { gegenstandId: ressourceId, anzahl },
-      ])
-      schreibeSlots(danach)
-      return danach
-    })
+    setSlots((bisher) =>
+      legeOderStashe(bisher, [{ gegenstandId: ressourceId, anzahl }]),
+    )
   }, [])
 
   const sammleBeute = useCallback((beute: Beute[]) => {
-    setSlots((bisher) => {
-      const danach = legeBeuteInSlots(bisher, beute)
-      schreibeSlots(danach)
-      return danach
-    })
+    setSlots((bisher) => legeOderStashe(bisher, beute))
   }, [])
 
   return { slots, inventar, sammle, sammleBeute, setzeSlots }
+}
+
+// Legt Beute in die Fächer; was nirgends mehr Platz findet, wandert ins
+// Zwischenlager statt stillschweigend zu verschwinden.
+function legeOderStashe(
+  bisher: InventarSlot[],
+  beute: Beute[],
+): InventarSlot[] {
+  const gelegt = legeBeuteInSlotsMitRest(bisher, beute)
+  if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+  schreibeSlots(gelegt.slots)
+  return gelegt.slots
+}
+
+// Hängt Beute ans Überlauf-Zwischenlager an — für Aufrufer ausserhalb
+// des Hooks, die Slots selbst verwalten und Rest übrig behalten.
+export function stasheBeute(beute: Beute[]) {
+  if (typeof window === "undefined" || beute.length === 0) return
+  schreibeStash([...leseStash(), ...beute])
 }
 
 // Schreibt Beute synchron nach localStorage — für pagehide/Unmount,
