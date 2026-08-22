@@ -16,13 +16,7 @@ let geteilt: {
   THREE: typeof import("three")
   renderer: import("three").WebGLRenderer
 } | null = null
-let abbauTimer = 0
-// Erst abbauen, wenn wirklich keine Aufnahme mehr unterwegs ist —
-// sonst stirbt der Kontext mitten im Laden der langsameren Modelle.
-let inArbeit = 0
-
 async function renderKontext() {
-  window.clearTimeout(abbauTimer)
   if (geteilt) return geteilt
   const THREE = await import("three")
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -34,17 +28,10 @@ async function renderKontext() {
   return geteilt
 }
 
-// Nach getaner Arbeit den einen Kontext wieder freigeben — die
-// fertigen Bilder bleiben im Cache, der Karte gehört der Platz.
-function planeAbbau() {
-  window.clearTimeout(abbauTimer)
-  abbauTimer = window.setTimeout(() => {
-    if (!geteilt || inArbeit > 0) return
-    geteilt.renderer.dispose()
-    geteilt.renderer.forceContextLoss()
-    geteilt = null
-  }, 4000)
-}
+// WICHTIG: Der eine Snapshot-Renderer bleibt dauerhaft am Leben.
+// Ihn wiederholt abzubauen und neu zu erzeugen lässt verlorene
+// Kontexte auflaufen, bis der Browser den Mapbox-Kontext verdrängt
+// (Karte wird blau). Ein stabiler Kontext ist völlig unkritisch.
 
 export function modellAlsBild(
   mesh: SichtMesh,
@@ -61,17 +48,7 @@ export function modellAlsBild(
   return neu
 }
 
-async function renderBild(mesh: SichtMesh, winkel: number): Promise<string> {
-  inArbeit += 1
-  try {
-    return await renderBildJetzt(mesh, winkel)
-  } finally {
-    inArbeit -= 1
-    planeAbbau()
-  }
-}
-
-async function renderBildJetzt(
+async function renderBild(
   mesh: SichtMesh,
   winkel: number,
 ): Promise<string> {
