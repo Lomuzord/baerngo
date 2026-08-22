@@ -22,6 +22,8 @@ import {
   zaehleSlots,
 } from "@/lib/inventar"
 import { useBauen } from "../useBauen"
+import { useMine } from "../useMine"
+import { meldeTagesEreignis } from "../tagesEreignis"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
 import {
@@ -42,6 +44,7 @@ export function BauenPlatte() {
   const sitzung = useRef<{ beenden: () => void } | null>(null)
   const { slots, inventar, setzeSlots } = useInventar()
   const { bloecke, setze, nimmWeg, ersetze } = useBauen()
+  const { spalten: mineSpalten, naechsteFuer, grabe } = useMine()
   const { haltbarkeitFuer, setzeHaltbarkeitFuer, maximumFuer } = usePickel()
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
@@ -137,6 +140,9 @@ export function BauenPlatte() {
     fotoBereit: (mach) => {
       fotoRef.current = mach
     },
+    mineSpalten: () => [],
+    mineNaechste: () => null,
+    aufMineSchlag: () => false,
   })
 
   useEffect(() => {
@@ -184,6 +190,10 @@ export function BauenPlatte() {
     }
     steuerung.current.aufSchlag = (blockId) =>
       schlageGesetzt(blockId, steuerung.current.werkzeug())
+    steuerung.current.mineSpalten = () => mineSpalten
+    steuerung.current.mineNaechste = (ix, iz) => naechsteFuer(ix, iz)
+    steuerung.current.aufMineSchlag = (ix, iz) =>
+      grabeMine(ix, iz, steuerung.current.werkzeug())
   })
 
   function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {
@@ -272,6 +282,50 @@ export function BauenPlatte() {
     } finally {
       setFotoLaeuft(false)
     }
+  }
+
+  function grabeMine(ix: number, iz: number, werkzeug: string | null): boolean {
+    const ergebnis = grabe(ix, iz)
+    if (!ergebnis) {
+      spieleHaptik("rattle")
+      setHinweis("Grundgestein — tiefer geht es hier nicht.")
+      return false
+    }
+    const drops = ernteDrops(ergebnis.art, abbauDrop)
+    const gelegt = legeBeuteInSlotsMitRest(slots, drops)
+    if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+    let nextSlots = gelegt.slots
+    for (const stuck of drops) {
+      meldeTagesEreignis("sammeln", stuck.anzahl, stuck.gegenstandId)
+    }
+    if (werkzeug && (istPickel(werkzeug) || istSchaufel(werkzeug))) {
+      const max = maximumFuer(werkzeug)
+      const bisher = haltbarkeitFuer(werkzeug)
+      const bar = bisher > 0 ? bisher : max
+      const nutzung = nutzePickel(zaehleSlots(nextSlots), bar, werkzeug)
+      setzeHaltbarkeitFuer(werkzeug, nutzung.haltbarkeit)
+      if (nutzung.zerbrochen) {
+        nextSlots = nimmAnzahl(nextSlots, werkzeug, 1) ?? nextSlots
+        spieleHaptik("zerbrochen")
+        setHinweis(
+          istSchaufel(werkzeug)
+            ? "Die Schaufel ist zerbrochen."
+            : "Die Spitzhacke ist zerbrochen.",
+        )
+        setzeSlots(nextSlots)
+        return true
+      }
+    }
+    spieleHaptik("abbauen")
+    const namen = drops
+      .map(
+        (stuck) =>
+          `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
+      )
+      .join(" · ")
+    setHinweis(`${namen} · Tiefe ${ergebnis.tiefe}`)
+    setzeSlots(nextSlots)
+    return true
   }
 
   useEffect(() => {
