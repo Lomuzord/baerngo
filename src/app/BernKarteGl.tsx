@@ -24,7 +24,6 @@ import { umweltAusMerkmalen, type Umwelt } from "@/lib/umwelt"
 import { spieleHaptik } from "@/lib/haptik"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
-import { modellAlsBild } from "./modellBild"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
 import { useInventar } from "./useInventar"
 import { useSpielerOrt } from "./useSpielerOrt"
@@ -155,6 +154,7 @@ export function BernKarteGl({
               img.alt = ""
               img.draggable = false
               img.className = "mc-pokestop-bild"
+              img.src = `/marker/${modell.id}-0.png`
               buehne.replaceChildren(img)
               modellBilder.current.set(modell.id, img)
             }
@@ -329,21 +329,13 @@ export function BernKarteGl({
   }, [gewaehltId])
 
   function aktualisiereModellRichtung(map: mapboxgl.Map) {
-    // 8 Himmelsrichtungen: beim Drehen der Karte wird jedes Bauwerk
-    // aus der passenden Richtung neu aufgenommen (gecacht pro Winkel)
-    const index =
-      ((Math.round(-map.getBearing() / 45) % 8) + 8) % 8
+    // Vier vorgerenderte Himmelsrichtungen pro Bauwerk — beim Drehen
+    // wird nur die Bildquelle getauscht, es wird nichts gerendert.
+    const index = ((Math.round(-map.getBearing() / 90) % 4) + 4) % 4
     if (index === richtungsIndex.current) return
     richtungsIndex.current = index
-    const winkel = -0.15 + (index * 45 * Math.PI) / 180
     modellBilder.current.forEach((img, id) => {
-      const mesh = meshFuerSehenswuerdigkeit(id)
-      if (!mesh) return
-      void modellAlsBild(mesh, winkel)
-        .then((bild) => {
-          img.src = bild
-        })
-        .catch(() => {})
+      img.src = `/marker/${id}-${index}.png`
     })
   }
 

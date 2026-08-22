@@ -943,3 +943,176 @@ for (const [id, bau] of Object.entries(MODELLE)) {
     `${id}.glb — ${welt.size} Voxel, ${mesh.indizes.length / 3} Dreiecke`,
   )
 }
+
+// ---------- Marker-Sprites (Software-Renderer, kein WebGL) ----------
+// Rendert jedes Modell in 4 Himmelsrichtungen als PNG für die
+// Kartenmarker — zur Laufzeit gibt es dann NULL Snapshot-Rendering.
+
+const SPRITE_ZIEL = join(wurzel, "public", "marker")
+mkdirSync(SPRITE_ZIEL, { recursive: true })
+
+// Kachel-Pixel als RGBA laden (über magick nach raw konvertiert)
+const KACHEL_PIXEL = new Map()
+{
+  const tmp = join(tmpdir(), "baerngo-atlas")
+  for (const id of ATLAS_BLOECKE) {
+    const roh = join(tmp, `${id}.rgba`)
+    execSync(
+      `magick "${join(wurzel, "public", "bloecke", `${id}.png`)}" ` +
+        `-background "#aac9dd" -alpha remove -depth 8 rgba:"${roh}"`,
+    )
+    KACHEL_PIXEL.set(id, readFileSync(roh))
+  }
+}
+
+function texel(id, u, v) {
+  const daten = KACHEL_PIXEL.get(id)
+  const x = Math.min(15, Math.max(0, Math.floor(u * 16)))
+  const y = Math.min(15, Math.max(0, Math.floor(v * 16)))
+  const i = (y * 16 + x) * 4
+  return [daten[i], daten[i + 1], daten[i + 2]]
+}
+
+function voxelFarbe(wert, u, v) {
+  if (typeof wert === "number") {
+    return [(wert >> 16) & 0xff, (wert >> 8) & 0xff, wert & 0xff]
+  }
+  if (typeof wert === "string") return texel(wert, u, v)
+  const [r, g, b] = texel(wert.textur, u, v)
+  const t = wert.hell ?? 1
+  return [r * t, g * t, b * t]
+}
+
+// Klassische 2:1-Isometrie, Kante E Pixel. Flächen-Schablonen einmal
+// vorberechnen: Liste von (dx, dy, u, v) pro Fläche.
+function baueSchablonen(E) {
+  const oben = []
+  const links = []
+  const rechts = []
+  // Oben: Raute aus (0,0)->(E,E/2)->(0,E)->(-E,E/2)
+  for (let a = 0; a < E; a++) {
+    for (let b = 0; b < E; b++) {
+      const u = (a + 0.5) / E
+      const v = (b + 0.5) / E
+      const ox = Math.round((u - v) * E)
+      const oy = Math.round(((u + v) * E) / 2)
+      oben.push([ox, oy, u, v])
+      // Links: x = -E..0, schräg nach unten
+      links.push([
+        Math.round(-E + u * E),
+        Math.round(E / 2 + (u * E) / 2 + v * E),
+        u,
+        v,
+      ])
+      // Rechts
+      rechts.push([
+        Math.round(u * E),
+        Math.round(E - (u * E) / 2 + v * E),
+        u,
+        v,
+      ])
+    }
+  }
+  return { oben, links, rechts }
+}
+
+function dreheWelt(welt, mal) {
+  let aktuell = welt
+  for (let n = 0; n < mal; n++) {
+    const neu = new Map()
+    let maxX = -Infinity
+    for (const key of aktuell.keys()) {
+      const [x] = key.split(",").map(Number)
+      if (x > maxX) maxX = x
+    }
+    for (const [key, wert] of aktuell) {
+      const [x, y, z] = key.split(",").map(Number)
+      neu.set(`${z},${y},${maxX - x}`, wert)
+    }
+    aktuell = neu
+  }
+  return aktuell
+}
+
+function renderSprite(welt, pfad) {
+  const E = 8
+  const { oben, links, rechts } = baueSchablonen(E)
+  const eintraege = []
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  let minZ = Infinity, maxZ = -Infinity
+  for (const [key, wert] of welt) {
+    const [x, y, z] = key.split(",").map(Number)
+    eintraege.push([x, y, z, wert])
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z)
+  }
+  // Maler-Reihenfolge: hinten zuerst
+  eintraege.sort((a, b) => a[0] + a[2] - (b[0] + b[2]) || a[1] - b[1])
+
+  const breite = (maxX - minX + maxZ - minZ + 2) * E + 4
+  const hoehe =
+    ((maxX - minX + maxZ - minZ + 2) * E) / 2 + (maxY - minY + 1) * E + 4
+  const bild = new Uint8ClampedArray(breite * hoehe * 4)
+
+  function male(bx, by, schablone, farbe, licht) {
+    const [r, g, b] = farbe
+    for (const [dx, dy, u, v] of schablone) {
+      void u
+      void v
+      const px = bx + dx
+      const py = by + dy
+      if (px < 0 || py < 0 || px >= breite || py >= hoehe) continue
+      const i = (py * breite + px) * 4
+      bild[i] = r * licht
+      bild[i + 1] = g * licht
+      bild[i + 2] = b * licht
+      bild[i + 3] = 255
+    }
+  }
+
+  function maleTextur(bx, by, schablone, wert, licht) {
+    for (const [dx, dy, u, v] of schablone) {
+      const px = bx + dx
+      const py = by + dy
+      if (px < 0 || py < 0 || px >= breite || py >= hoehe) continue
+      const [r, g, b] = voxelFarbe(wert, u, v)
+      const i = (py * breite + px) * 4
+      bild[i] = r * licht
+      bild[i + 1] = g * licht
+      bild[i + 2] = b * licht
+      bild[i + 3] = 255
+    }
+  }
+
+  for (const [x, y, z, wert] of eintraege) {
+    const rx = x - minX
+    const ry = y - minY
+    const rz = z - minZ
+    const bx = 2 + (rx - rz + (maxZ - minZ)) * E + E
+    const by = Math.round(
+      2 + ((rx + rz) * E) / 2 + (maxY - minY - ry) * E,
+    )
+    const textur = typeof wert !== "number"
+    const zeichne = textur ? maleTextur : male
+    const farbe = textur ? wert : voxelFarbe(wert, 0, 0)
+    // Nur sichtbare Flächen (Nachbar-Culling in gedrehter Welt)
+    if (!welt.has(`${x},${y + 1},${z}`)) zeichne(bx, by - E, oben, farbe, 1.0)
+    if (!welt.has(`${x},${y},${z + 1}`)) zeichne(bx, by - E, links, farbe, 0.72)
+    if (!welt.has(`${x + 1},${y},${z}`)) zeichne(bx, by - E, rechts, farbe, 0.86)
+  }
+
+  const roh = join(tmpdir(), "baerngo-atlas", "sprite.rgba")
+  writeFileSync(roh, Buffer.from(bild.buffer))
+  execSync(
+    `magick -size ${breite}x${hoehe} -depth 8 rgba:"${roh}" -trim +repage "${pfad}"`,
+  )
+}
+
+for (const [id, bau] of Object.entries(MODELLE)) {
+  for (let richtung = 0; richtung < 4; richtung++) {
+    const welt = dreheWelt(bau(), richtung)
+    renderSprite(welt, join(SPRITE_ZIEL, `${id}-${richtung}.png`))
+  }
+  console.log(`${id}: 4 Marker-Sprites`)
+}

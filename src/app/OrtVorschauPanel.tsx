@@ -1,12 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import type { SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
 import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { entfernungText, istInReichweite } from "@/lib/reichweite"
-import { modellAlsBild } from "./modellBild"
 import type { SpielerOrt } from "./useSpielerOrt"
 
 export function OrtVorschauPanel({
@@ -24,23 +22,9 @@ export function OrtVorschauPanel({
     spieler.status === "bereit"
       ? istInReichweite(spieler.lage, eintrag.id)
       : null
-  // Das Voxel-Bauwerk frontal als Vorschaubild
-  const [modellBild, setModellBild] = useState<string | null>(null)
-  useEffect(() => {
-    setModellBild(null)
-    if (!mesh) return
-    let aktiv = true
-    void modellAlsBild(mesh, -0.15)
-      .then((bild) => {
-        if (aktiv) setModellBild(bild)
-      })
-      .catch(() => {})
-    return () => {
-      aktiv = false
-    }
-    // mesh folgt aus eintrag.id
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eintrag.id])
+  // Das vorgerenderte Voxel-Bauwerk als Vorschaubild
+  const modellBild =
+    mesh && mesh.format === "gltf" ? `/marker/${eintrag.id}-0.png` : null
 
   return (
     <aside className="mc-ort-karte" aria-label={eintrag.name}>
