@@ -50,6 +50,7 @@ let echo: DelayNode | null = null
 let echoWeg: GainNode | null = null
 
 let laeuft = false
+let bewacht = false
 let planerTimer = 0
 let naechsteZeit = 0
 let schritt = 0 // 16tel-Zähler, endlos
@@ -101,9 +102,29 @@ function kontext(): AudioContext | null {
       echoWeg.connect(echo)
     }
     if (ctx.state === "suspended") void ctx.resume().catch(() => {})
+    bewacheAutoplay()
     return ctx
   } catch {
     return null
+  }
+}
+
+// Browser entsperren Audio nur in "richtigen" Gesten — und welche das
+// sind, ist je Engine verschieden (iOS: eher touchend/click als
+// pointerdown). Darum: dauerhafte Wecker auf allen Gesten-Arten, die
+// einen hängenden Kontext aufwecken und die Musik nachstarten.
+function bewacheAutoplay() {
+  if (bewacht || typeof window === "undefined") return
+  bewacht = true
+  const wecker = () => {
+    if (!tonAn()) return
+    if (ctx && ctx.state === "suspended") {
+      void ctx.resume().catch(() => {})
+    }
+    if (!laeuft) starteMusik()
+  }
+  for (const art of ["click", "touchend", "pointerup", "keydown"]) {
+    window.addEventListener(art, wecker, { passive: true })
   }
 }
 
@@ -334,7 +355,7 @@ function planeSchritt(ac: AudioContext, roheZeit: number) {
 function planer() {
   if (!laeuft) return
   const ac = kontext()
-  if (ac && tonAn() && !document.hidden) {
+  if (ac && ac.state === "running" && tonAn() && !document.hidden) {
     if (naechsteZeit < ac.currentTime) naechsteZeit = ac.currentTime + 0.06
     while (naechsteZeit < ac.currentTime + 0.55) {
       planeSchritt(ac, naechsteZeit)
