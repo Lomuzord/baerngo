@@ -214,8 +214,9 @@
   z-index: 3;
 }
 
+/* Kein mix-blend-mode: Multiply wird über dem WebGL-Canvas der Karte
+   nicht komposittiert — schlichtes Alpha-Overlay funktioniert überall. */
 .mc-himmel-tint {
-  mix-blend-mode: multiply;
   transition: opacity 2s ease;
 }
 
