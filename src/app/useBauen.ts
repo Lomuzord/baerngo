@@ -7,6 +7,7 @@ import {
   setzeBlock,
   type GesetzterBlock,
 } from "@/lib/bauen"
+import { wendeWachstumAn } from "@/lib/wachstum"
 import type { Zelle } from "@/lib/spielflaeche"
 
 const SPEICHER = "baerngo-bauen"
@@ -15,7 +16,17 @@ export function useBauen() {
   const [bloecke, setBloecke] = useState<GesetzterBlock[]>([])
 
   useEffect(() => {
-    setBloecke(leseBloecke())
+    setBloecke(wendeWachstumAn(leseBloecke(), Date.now()))
+    // Setzlinge und Samen wachsen nach echter Zeit weiter
+    const timer = window.setInterval(() => {
+      setBloecke((bisher) => {
+        const danach = wendeWachstumAn(bisher, Date.now())
+        if (danach === bisher) return bisher
+        schreibeBloecke(danach)
+        return danach
+      })
+    }, 15_000)
+    return () => window.clearInterval(timer)
   }, [])
 
   const setze = useCallback((gegenstandId: string, zelle: Zelle) => {

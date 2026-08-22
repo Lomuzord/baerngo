@@ -5,11 +5,11 @@ import {
   abbauDrop,
   anzeigeHaltbarkeit,
   istPickel,
-  laesstBeuteFallen,
   nutzePickel,
   type AbbauStand,
 } from "@/lib/abbauen"
 import { aktionFuerHand, kannBlockSetzen } from "@/lib/bauen"
+import { ernteDrops, kannPflanzen } from "@/lib/wachstum"
 import { gegenstandById, istSetzbar } from "@/lib/gegenstaende"
 import { spieleHaptik } from "@/lib/haptik"
 import {
@@ -124,6 +124,10 @@ export function BauenPlatte() {
     steuerung.current.aufSetzen = (zelle) => {
       if (wahlIndex == null || !wahl || !istSetzbar(wahl)) return
       if (!kannBlockSetzen(bloecke, zelle)) return
+      if (!kannPflanzen(bloecke, wahl, zelle)) {
+        setHinweis("Setzling und Samen brauchen Erde oder Gras darunter.")
+        return
+      }
       const genommen = nimmVonIndex(slots, wahlIndex, 1)
       if (!genommen.ok) return
       if (wahl === "wassereimer") {
@@ -152,11 +156,8 @@ export function BauenPlatte() {
     const weg = bloecke.find((block) => block.id === blockId)
     if (!weg) return false
     nimmWeg(blockId)
-    let nextSlots = laesstBeuteFallen(weg.gegenstandId)
-      ? legeBeuteInSlots(slots, [
-          { gegenstandId: abbauDrop(weg.gegenstandId), anzahl: 1 },
-        ])
-      : slots
+    const drops = ernteDrops(weg.gegenstandId, abbauDrop)
+    let nextSlots = drops.length ? legeBeuteInSlots(slots, drops) : slots
     if (werkzeug && istPickel(werkzeug)) {
       const max = maximumFuer(werkzeug)
       const bisher = haltbarkeitFuer(werkzeug)

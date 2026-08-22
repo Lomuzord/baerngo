@@ -13,16 +13,21 @@ export type GesetzterBlock = {
   gegenstandId: string
   zelle: Zelle
   fallStart?: Zelle
+  // Wann der Block gesetzt wurde — Setzlinge und Samen wachsen
+  // daraus nach echter Zeit heran.
+  gesetztUm?: number
 }
 
 export function neuerBlock(
   gegenstandId: string,
   zelle: Zelle,
 ): GesetzterBlock {
+  const jetzt = Date.now()
   return {
-    id: `${gegenstandId}-${zelle.ix}-${zelle.iy}-${zelle.iz}-${Date.now()}`,
+    id: `${gegenstandId}-${zelle.ix}-${zelle.iy}-${zelle.iz}-${jetzt}`,
     gegenstandId,
     zelle,
+    gesetztUm: jetzt,
   }
 }
 
@@ -169,7 +174,11 @@ function parseBlock(roh: unknown): GesetzterBlock | undefined {
     "id" in roh && typeof roh.id === "string"
       ? roh.id
       : `${roh.gegenstandId}-${roh.zelle.ix}-${roh.zelle.iy}-${roh.zelle.iz}`
-  return { id, gegenstandId: roh.gegenstandId, zelle: roh.zelle }
+  const gesetztUm =
+    "gesetztUm" in roh && typeof roh.gesetztUm === "number"
+      ? roh.gesetztUm
+      : undefined
+  return { id, gegenstandId: roh.gegenstandId, zelle: roh.zelle, gesetztUm }
 }
 
 function istZelle(wert: unknown): wert is Zelle {

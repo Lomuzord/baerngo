@@ -84,12 +84,10 @@ const HAERTE: Record<string, number> = {
   buecherregal: 1.2,
   setzling: 0.2,
   wasser: 0.2,
+  samen: 0.2,
+  weizen: 0.2,
 }
 
-// Wasser hinterlässt beim Abbauen nichts — es verläuft einfach.
-export function laesstBeuteFallen(gegenstandId: string): boolean {
-  return gegenstandId !== "wasser"
-}
 
 // Was ein abgebauter Block wirklich fallen lässt — Stein wird wie in
 // Minecraft zu Bruchstein.

@@ -81,6 +81,8 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
     textur: "/bloecke/setzling.png",
   },
   samen: { id: "samen", name: "Samen", textur: "/bloecke/samen.png" },
+  weizen: { id: "weizen", name: "Weizen", textur: "/bloecke/weizen.png" },
+  brot: { id: "brot", name: "Brot", textur: "/bloecke/brot.png" },
   goldblock: { id: "goldblock", name: "Goldblock", textur: "/bloecke/goldblock.png" },
   honigbrot: { id: "honigbrot", name: "Honigbrot", textur: "/bloecke/honigbrot.png" },
   bernwappen: { id: "bernwappen", name: "Bernwappen", textur: "/bloecke/bernwappen.png" },
@@ -128,7 +130,8 @@ const NICHT_SETZBAR = new Set([
   "kohle",
   "diamant",
   "eimer",
-  "samen",
+  "weizen",
+  "brot",
 ])
 
 export function istWerkzeug(id: string): boolean {
