@@ -1,5 +1,6 @@
 "use client"
 
+import { meldeTagesEreignis } from "../tagesEreignis"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { haltbarkeitNachZugang, istPickel } from "@/lib/abbauen"
 import { spieleHaptik } from "@/lib/haptik"
@@ -175,6 +176,7 @@ export function WerkbankForm() {
       return
     }
     spieleHaptik("craft")
+    meldeTagesEreignis("craft", gecraftet.anzahl, gecraftet.ergebnis.id)
     if (istPickel(gecraftet.ergebnis.id)) {
       const id = gecraftet.ergebnis.id
       // Auch Hand und Ofen zählen — sonst "repariert" das Craften

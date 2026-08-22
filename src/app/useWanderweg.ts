@@ -21,6 +21,7 @@ import {
   WANDER_ZIEL_METER,
 } from "@/lib/wanderung"
 import type { SpielerOrt } from "./useSpielerOrt"
+import { meldeTagesEreignis } from "./tagesEreignis"
 
 const WANDER_SPEICHER = "baerngo-wanderung"
 const BRUNNEN_SPEICHER = "baerngo-brunnen"
@@ -50,6 +51,7 @@ export function useWanderweg(
     const zuwachs = distanzZuwachs(letzteLage.current, lage, genauigkeit)
     letzteLage.current = lage
     if (zuwachs > 0) {
+      meldeTagesEreignis("meter", zuwachs)
       setMeter((bisher) => {
         const danach = Math.min(WANDER_ZIEL_METER, bisher + zuwachs)
         schreibe(WANDER_SPEICHER, danach)

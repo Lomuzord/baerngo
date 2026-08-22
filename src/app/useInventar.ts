@@ -8,6 +8,7 @@ import {
   zaehleSlots,
   type InventarSlot,
 } from "@/lib/inventar"
+import { albumNamen, merkeEntdeckt, parseAlbum } from "@/lib/album"
 import type { Beute } from "@/lib/sammeln"
 
 const SPEICHER = "baerngo-inventar"
@@ -45,6 +46,30 @@ export function useInventar() {
   }, [])
 
   const inventar = useMemo(() => zaehleSlots(slots), [slots])
+
+  // Sammelalbum: jeder Gegenstand, der je in den Fächern liegt, gilt
+  // als entdeckt — egal über welchen Weg er hereinkam.
+  useEffect(() => {
+    const ids = slots.flatMap((slot) => (slot ? [slot.id] : []))
+    if (ids.length === 0) return
+    try {
+      const roh = window.localStorage.getItem("baerngo-album")
+      const album = parseAlbum(roh ? JSON.parse(roh) : [])
+      const gemerkt = merkeEntdeckt(album, ids)
+      if (gemerkt.neu.length === 0) return
+      window.localStorage.setItem(
+        "baerngo-album",
+        JSON.stringify(gemerkt.album),
+      )
+      window.dispatchEvent(
+        new CustomEvent("baerngo-album-neu", {
+          detail: { namen: albumNamen(gemerkt.neu) },
+        }),
+      )
+    } catch {
+      // Album ist Deko — nie das Inventar stören
+    }
+  }, [slots])
 
   const setzeSlots = useCallback((danach: InventarSlot[]) => {
     schreibeSlots(danach)

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { meldeTagesEreignis } from "./tagesEreignis"
 import {
   entsperreTruhe,
   oeffneTruhe,
@@ -50,6 +51,7 @@ export function useTruhen() {
   const oeffne = useCallback((id: string) => {
     const result = oeffneTruhe(standRef.current, id)
     if (!result.geoeffnet) return false
+    meldeTagesEreignis("truhe", 1)
     standRef.current = result.stand
     schreibeTruhen(result.stand)
     setStand(result.stand)

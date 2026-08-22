@@ -33,6 +33,19 @@ import { istTier, tierById, tierDrops } from "@/lib/tiere"
 import { BRUNNEN } from "@/lib/brunnen"
 import { WANDER_ZIEL_METER, wanderText } from "@/lib/wanderung"
 import { useWanderweg } from "./useWanderweg"
+import {
+  AUFGABEN_EREIGNIS,
+  holeTagesBelohnung,
+  leseTagesStand,
+  meldeTagesEreignis,
+} from "./tagesEreignis"
+import {
+  alleGeschafft,
+  aufgabenFuer,
+  fertigAnzahl,
+  TAGES_BELOHNUNG,
+  type TagesStand,
+} from "@/lib/tagesaufgaben"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
@@ -102,6 +115,32 @@ export function BernKarteGl({
   )
   const brunnenStandRef = useRef(brunnen)
   brunnenStandRef.current = brunnen
+
+  // Tagesaufgaben: Stand lauscht auf Meldungen aus allen Spielpfaden
+  const [aufgabenOffen, setAufgabenOffen] = useState(false)
+  const [tagesStand, setTagesStand] = useState<TagesStand>({
+    datum: "",
+    zaehler: {},
+    belohnt: false,
+  })
+  useEffect(() => {
+    const lies = () => setTagesStand(leseTagesStand())
+    lies()
+    window.addEventListener(AUFGABEN_EREIGNIS, lies)
+    return () => window.removeEventListener(AUFGABEN_EREIGNIS, lies)
+  }, [])
+  const aufgaben = tagesStand.datum ? aufgabenFuer(tagesStand.datum) : []
+  const fertig = fertigAnzahl(aufgaben, tagesStand)
+
+  // "Neu im Album!"-Toast, wenn ein Gegenstand erstmals auftaucht
+  useEffect(() => {
+    const aufNeu = (event: Event) => {
+      const detail = (event as CustomEvent<{ namen?: string }>).detail
+      if (detail?.namen) setHinweis(`Neu im Album: ${detail.namen}!`)
+    }
+    window.addEventListener("baerngo-album-neu", aufNeu)
+    return () => window.removeEventListener("baerngo-album-neu", aufNeu)
+  }, [])
 
   // Gesammelte Brunnen bekommen den goldenen Haken
   useEffect(() => {
@@ -384,6 +423,7 @@ export function BernKarteGl({
               if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
               setzeSlotsRef.current(gelegt.slots)
               spieleHaptik("sammeln")
+              meldeTagesEreignis("tier", 1)
               const text = drops
                 .map(
                   (stuck) =>
@@ -395,10 +435,12 @@ export function BernKarteGl({
             }
             sammleRef.current(weg.gegenstandId)
             spieleHaptik("sammeln")
+            meldeTagesEreignis("sammeln", 1, weg.gegenstandId)
             const name = gegenstandById(weg.gegenstandId)?.name ?? weg.gegenstandId
             const bonus = bonusDrop(weg.gegenstandId)
             if (bonus) {
               sammleRef.current(bonus)
+              meldeTagesEreignis("sammeln", 1, bonus)
               const bonusName = gegenstandById(bonus)?.name ?? bonus
               setHinweis(`+1 ${name} · +1 ${bonusName}!`)
             } else {
@@ -504,6 +546,66 @@ export function BernKarteGl({
           ? "🧰 Wander-Truhe öffnen!"
           : `🥾 ${wanderText(meter)}`}
       </button>
+      <button
+        type="button"
+        className={
+          alleGeschafft(aufgaben, tagesStand) && !tagesStand.belohnt
+            ? "mc-aufgaben-chip mc-wander-bereit"
+            : "mc-aufgaben-chip"
+        }
+        onClick={() => setAufgabenOffen((offen) => !offen)}
+        aria-expanded={aufgabenOffen}
+      >
+        🎯 {fertig}/{aufgaben.length || 3}
+      </button>
+      {aufgabenOffen ? (
+        <div className="mc-aufgaben-panel">
+          <p className="mc-aufgaben-titel">Tagesaufgaben</p>
+          <ul>
+            {aufgaben.map((aufgabe) => {
+              const stand = Math.min(
+                aufgabe.ziel,
+                tagesStand.zaehler[aufgabe.id] ?? 0,
+              )
+              return (
+                <li
+                  key={aufgabe.id}
+                  className={stand >= aufgabe.ziel ? "mc-aufgabe-fertig" : undefined}
+                >
+                  {aufgabe.text}
+                  <span>
+                    {aufgabe.art === "meter"
+                      ? `${(stand / 1000).toFixed(1)}/${(aufgabe.ziel / 1000).toFixed(0)} km`
+                      : `${Math.floor(stand)}/${aufgabe.ziel}`}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          {alleGeschafft(aufgaben, tagesStand) && !tagesStand.belohnt ? (
+            <button
+              type="button"
+              className="mc-btn mc-platte-ar"
+              onClick={() => {
+                if (!holeTagesBelohnung()) return
+                const gelegt = legeBeuteInSlotsMitRest(slotsRef.current, [
+                  ...TAGES_BELOHNUNG,
+                ])
+                if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
+                setzeSlotsRef.current(gelegt.slots)
+                spieleHaptik("truhe")
+                setHinweis("Tagesaufgaben geschafft! +2 Diamant · +3 Gold")
+                setAufgabenOffen(false)
+              }}
+            >
+              Belohnung abholen
+            </button>
+          ) : null}
+          {tagesStand.belohnt ? (
+            <p className="mc-aufgaben-done">Heute alles erledigt ✓</p>
+          ) : null}
+        </div>
+      ) : null}
       {spieler.status !== "bereit" ? (
         <p className="mc-ort-status" data-testid="spieler-ort">
           {spieler.status === "verweigert"
