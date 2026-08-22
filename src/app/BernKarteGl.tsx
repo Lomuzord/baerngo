@@ -24,7 +24,7 @@ import { umweltAusMerkmalen, type Umwelt } from "@/lib/umwelt"
 import { spieleHaptik } from "@/lib/haptik"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
-import { erstelleSichtEbene, type SichtEbene } from "./sichtEbene"
+import { modellAlsBild } from "./modellBild"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
 import { useInventar } from "./useInventar"
 import { useSpielerOrt } from "./useSpielerOrt"
@@ -42,7 +42,8 @@ export function BernKarteGl({
   const spielerMarker = useRef<mapboxgl.Marker | null>(null)
   const wildMarker = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const trainerStop = useRef<(() => void) | null>(null)
-  const sichtEbene = useRef<SichtEbene | null>(null)
+  const modellBilder = useRef<Map<string, HTMLImageElement>>(new Map())
+  const richtungsIndex = useRef(-1)
   const pins = useRef<Map<string, HTMLElement>>(new Map())
   const hatZentriert = useRef(false)
   const onWaehleRef = useRef(onWaehle)
@@ -132,14 +133,6 @@ export function BernKarteGl({
         if (!map.getLayer("minecraft-buildings")) {
           map.addLayer(MINECRAFT_GEBAEUDE as never)
         }
-        // Die Voxel-Bauwerke als echte 3D-Objekte in der Kartenszene —
-        // sie drehen und zoomen mit der Kamera wie richtige Gebäude.
-        if (!map.getLayer("sicht-modelle-3d")) {
-          const ebene = erstelleSichtEbene()
-          sichtEbene.current = ebene
-          map.addLayer(ebene as never)
-          ebene.setzeWahl(gewaehltRef.current)
-        }
         pins.current.clear()
         for (const modell of listSichtModelle()) {
           const mesh = meshFuerSehenswuerdigkeit(modell.id)
@@ -155,6 +148,17 @@ export function BernKarteGl({
           new mapboxgl.Marker({ element: el, anchor: "bottom" })
             .setLngLat([modell.lage.lng, modell.lage.lat])
             .addTo(map)
+          if (mesh) {
+            const buehne = el.querySelector<HTMLElement>(".mc-pokestop-buehne")
+            if (buehne) {
+              const img = document.createElement("img")
+              img.alt = ""
+              img.draggable = false
+              img.className = "mc-pokestop-bild"
+              buehne.replaceChildren(img)
+              modellBilder.current.set(modell.id, img)
+            }
+          }
         }
         map.on("click", () => {
           onWaehleRef.current(null)
@@ -195,8 +199,12 @@ export function BernKarteGl({
         })
         map.on("rotate", () => {
           const aktiv = karte.current
-          if (aktiv) passeMarkerSkalaAn(aktiv)
+          if (aktiv) {
+            passeMarkerSkalaAn(aktiv)
+            aktualisiereModellRichtung(aktiv)
+          }
         })
+        aktualisiereModellRichtung(map)
         map.once("idle", () => setKarteBereit(true))
       })
     })()
@@ -207,6 +215,8 @@ export function BernKarteGl({
       setKarteBereit(false)
       wildMarker.current.forEach((marker) => marker.remove())
       wildMarker.current.clear()
+      modellBilder.current.clear()
+      richtungsIndex.current = -1
       trainerStop.current?.()
       trainerStop.current = null
       spielerMarker.current?.remove()
@@ -305,7 +315,6 @@ export function BernKarteGl({
         id === gewaehltId,
       )
     })
-    sichtEbene.current?.setzeWahl(gewaehltId)
     const map = karte.current
     const modell = gewaehltId ? sichtModellById(gewaehltId) : undefined
     if (!map || !modell) return
@@ -318,6 +327,25 @@ export function BernKarteGl({
     }
     geheHin()
   }, [gewaehltId])
+
+  function aktualisiereModellRichtung(map: mapboxgl.Map) {
+    // 8 Himmelsrichtungen: beim Drehen der Karte wird jedes Bauwerk
+    // aus der passenden Richtung neu aufgenommen (gecacht pro Winkel)
+    const index =
+      ((Math.round(-map.getBearing() / 45) % 8) + 8) % 8
+    if (index === richtungsIndex.current) return
+    richtungsIndex.current = index
+    const winkel = -0.15 + (index * 45 * Math.PI) / 180
+    modellBilder.current.forEach((img, id) => {
+      const mesh = meshFuerSehenswuerdigkeit(id)
+      if (!mesh) return
+      void modellAlsBild(mesh, winkel)
+        .then((bild) => {
+          img.src = bild
+        })
+        .catch(() => {})
+    })
+  }
 
   function zentriereAufMich() {
     const map = karte.current
@@ -479,6 +507,9 @@ function schwebeElement(
   root.setAttribute("aria-label", modell.name)
   root.innerHTML = `
     <span class="mc-pokestop-inhalt">
+      <span class="mc-pokestop-schwebe">
+        <span class="mc-pokestop-buehne"></span>
+      </span>
       <span class="mc-pokestop-scheibe"></span>
       <span class="mc-pokestop-ring"></span>
     </span>

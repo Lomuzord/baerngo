@@ -20,6 +20,11 @@
 .mc-body {
   min-height: 100%;
   margin: 0;
+  /* Spiel-UI: Langdruck darf keine Textauswahl starten (blaue
+     Markierung beim Abbauen in AR) */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   color: #f4f0d8;
   font-family: var(--font-vt), ui-monospace, monospace;
   background-color: #5b8c3a;
@@ -174,6 +179,28 @@
   text-align: center;
   color: #fff8dc;
   text-shadow: 1px 1px 0 #000;
+}
+
+.mc-pokestop-bild {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.mc-pokestop-aktiv .mc-pokestop-bild {
+  animation: mc-pokestop-tanz 1.5s ease-in-out infinite;
+}
+
+@keyframes mc-pokestop-tanz {
+  0%,
+  100% {
+    transform: scale(1.06) rotate(-2deg);
+  }
+  50% {
+    transform: scale(1.14) rotate(2deg);
+  }
 }
 
 .mc-ort-karte-modell {
@@ -469,8 +496,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  width: 96px;
-  height: 72px;
+  width: 156px;
+  height: 196px;
   padding: 0;
   background: none;
   border: 0;
