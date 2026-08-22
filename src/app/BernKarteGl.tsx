@@ -385,11 +385,14 @@ export function BernKarteGl({
   )
 }
 
+let letzteSkala = 0
 function passeMarkerSkalaAn(map: mapboxgl.Map) {
-  map.getContainer().style.setProperty(
-    "--mc-marker-skala",
-    String(markerSkala(map.getZoom())),
-  )
+  // Läuft sonst bei jeder Zoom-Frame — nur schreiben, wenn sich der
+  // Wert spürbar ändert, damit nicht alle Marker pro Frame neu layouten
+  const skala = markerSkala(map.getZoom())
+  if (Math.abs(skala - letzteSkala) < 0.04) return
+  letzteSkala = skala
+  map.getContainer().style.setProperty("--mc-marker-skala", String(skala))
 }
 
 function trainerRichtung(

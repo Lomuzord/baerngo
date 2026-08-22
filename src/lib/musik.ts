@@ -357,13 +357,13 @@ function planer() {
   const ac = kontext()
   if (ac && ac.state === "running" && tonAn() && !document.hidden) {
     if (naechsteZeit < ac.currentTime) naechsteZeit = ac.currentTime + 0.06
-    while (naechsteZeit < ac.currentTime + 0.55) {
+    while (naechsteZeit < ac.currentTime + 1.2) {
       planeSchritt(ac, naechsteZeit)
       naechsteZeit += SECHZEHNTEL
       schritt += 1
     }
   }
-  planerTimer = window.setTimeout(planer, 140)
+  planerTimer = window.setTimeout(planer, 250)
 }
 
 export function starteMusik() {
