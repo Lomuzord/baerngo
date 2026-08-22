@@ -1636,7 +1636,7 @@
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(5, 1fr);
   background: #2b2118;
   border-top: 4px solid #111;
   padding-bottom: env(safe-area-inset-bottom);
