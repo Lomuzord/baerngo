@@ -38,34 +38,35 @@ export function useWanderweg(
 
   const lage = spieler.status === "bereit" ? spieler.lage : null
   const genauigkeit = spieler.status === "bereit" ? spieler.genauigkeit : undefined
+  const brunnenRef = useRef(brunnen)
+  brunnenRef.current = brunnen
   useEffect(() => {
     if (!lage) return
     const zuwachs = distanzZuwachs(letzteLage.current, lage, genauigkeit)
     letzteLage.current = lage
     if (zuwachs > 0) meldeTagesEreignis("meter", zuwachs)
-    // Brunnen im Vorbeigehen einsammeln
-    setBrunnen((bisher) => {
-      const neu = neuGesammelt(bisher.gesammelt, lage)
-      if (neu.length === 0) return bisher
-      const danach: BrunnenStand = {
-        gesammelt: [...bisher.gesammelt, ...neu],
-        belohnt: bisher.belohnt,
-      }
-      const namen = neu
-        .map((id) => brunnenById(id)?.name ?? id)
-        .join(" · ")
-      if (sammlungKomplett(danach.gesammelt) && !danach.belohnt) {
-        danach.belohnt = true
-        aufEreignisRef.current(
-          `${namen} — Sammlung komplett! Belohnungstruhe!`,
-          [...BRUNNEN_BELOHNUNG],
-        )
-      } else {
-        aufEreignisRef.current(`Brunnen-Abzeichen: ${namen}`, [])
-      }
-      schreibe(BRUNNEN_SPEICHER, danach)
-      return danach
-    })
+    // Brunnen im Vorbeigehen einsammeln. Wichtig: alle Nebenwirkungen
+    // AUSSERHALB des State-Updaters — React darf Updater doppelt
+    // ausführen, und doppelte Belohnungen wären ein Item-Dupe.
+    const bisher = brunnenRef.current
+    const neu = neuGesammelt(bisher.gesammelt, lage)
+    if (neu.length === 0) return
+    const danach: BrunnenStand = {
+      gesammelt: [...bisher.gesammelt, ...neu],
+      belohnt: bisher.belohnt,
+    }
+    const namen = neu.map((id) => brunnenById(id)?.name ?? id).join(" · ")
+    if (sammlungKomplett(danach.gesammelt) && !danach.belohnt) {
+      danach.belohnt = true
+      aufEreignisRef.current(
+        `${namen} — Sammlung komplett! Belohnungstruhe!`,
+        [...BRUNNEN_BELOHNUNG],
+      )
+    } else {
+      aufEreignisRef.current(`Brunnen-Abzeichen: ${namen}`, [])
+    }
+    schreibe(BRUNNEN_SPEICHER, danach)
+    setBrunnen(danach)
   }, [lage, genauigkeit])
 
   return { brunnen }
