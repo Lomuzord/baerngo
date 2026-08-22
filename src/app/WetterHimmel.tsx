@@ -46,7 +46,7 @@ export function WetterHimmel() {
       {tint.staerke > 0 ? (
         <div
           className="mc-himmel-tint"
-          style={{ background: tint.farbe, opacity: tint.staerke }}
+          style={{ background: mitAlpha(tint.farbe, tint.staerke) }}
           aria-hidden
         />
       ) : null}
@@ -58,6 +58,16 @@ export function WetterHimmel() {
       ) : null}
     </>
   )
+}
+
+// Alpha gehört in die Farbe statt in `opacity`: Elemente mit
+// Teil-Opacity werden über dem WebGL-Canvas der Karte nicht
+// zuverlässig komposittiert.
+function mitAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 function neueStunde(): number {

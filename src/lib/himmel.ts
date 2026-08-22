@@ -12,19 +12,19 @@ export type HimmelTint = {
 export function tagesTint(stunde: number): HimmelTint {
   const s = ((stunde % 24) + 24) % 24
   // Nacht: 21:30–05:30 voll, weiche Übergänge davor/danach
-  if (s >= 22 || s < 5.5) return { farbe: "#0a1440", staerke: 0.42 }
+  if (s >= 22 || s < 5.5) return { farbe: "#0a1440", staerke: 0.6 }
   if (s >= 5.5 && s < 6.5) {
     // Nacht → Morgenrot
-    return { farbe: "#40206a", staerke: mische(0.42, 0.22, (s - 5.5) / 1) }
+    return { farbe: "#40206a", staerke: mische(0.6, 0.35, (s - 5.5) / 1) }
   }
   if (s >= 6.5 && s < 8) {
-    return { farbe: "#ff9a3c", staerke: mische(0.22, 0, (s - 6.5) / 1.5) }
+    return { farbe: "#ff9a3c", staerke: mische(0.35, 0, (s - 6.5) / 1.5) }
   }
   if (s >= 19 && s < 20.5) {
-    return { farbe: "#ff7a32", staerke: mische(0, 0.24, (s - 19) / 1.5) }
+    return { farbe: "#ff7a32", staerke: mische(0, 0.35, (s - 19) / 1.5) }
   }
   if (s >= 20.5 && s < 22) {
-    return { farbe: "#231a55", staerke: mische(0.24, 0.42, (s - 20.5) / 1.5) }
+    return { farbe: "#231a55", staerke: mische(0.35, 0.6, (s - 20.5) / 1.5) }
   }
   return { farbe: "#000000", staerke: 0 }
 }
