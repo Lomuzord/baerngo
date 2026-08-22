@@ -1,61 +1,114 @@
-// AR-Postkarte: legt einen Schnappschuss der Bau-Szene in einen
-// Berner Postkartenrahmen und teilt ihn (Web Share) oder lädt ihn.
+// Postkarte: Schnappschuss der Bau-Szene (in AR mit echtem Kamerabild
+// dahinter) in einem Berner Rahmen — mit wählbarem Stil und Gruss.
 
-export async function bauePostkarte(bildUrl: string): Promise<Blob> {
-  const bild = await ladeBild(bildUrl)
+export type SzenenFoto = {
+  // Virtuelle Szene (Blöcke); in AR mit transparentem Hintergrund
+  vordergrund: string
+  // Echtes Kamerabild aus der AR-Sitzung, wenn das Gerät es hergibt
+  hintergrund?: string
+}
+
+export type PostkartenStil = "klassisch" | "bern" | "nacht"
+
+export type PostkartenOptionen = {
+  gruss: string
+  stil: PostkartenStil
+}
+
+export const POSTKARTEN_STILE: { id: PostkartenStil; name: string }[] = [
+  { id: "klassisch", name: "Klassisch" },
+  { id: "bern", name: "Bärn" },
+  { id: "nacht", name: "Nacht" },
+]
+
+const STIL_FARBEN: Record<
+  PostkartenStil,
+  { papier: string; rand: string; text: string; neben: string; himmel: [string, string] }
+> = {
+  klassisch: {
+    papier: "#f7f2e2",
+    rand: "#4a3a28",
+    text: "#2b2118",
+    neben: "#6b5a40",
+    himmel: ["#7ec8e3", "#cfe9f5"],
+  },
+  bern: {
+    papier: "#d5372c",
+    rand: "#1a140f",
+    text: "#fff8dc",
+    neben: "#ffd9b8",
+    himmel: ["#f1c232", "#f7e2b0"],
+  },
+  nacht: {
+    papier: "#1c2340",
+    rand: "#f1c232",
+    text: "#ffe9c7",
+    neben: "#9aa7d8",
+    himmel: ["#0a1440", "#2b3a70"],
+  },
+}
+
+// Zeichnet die Karte in ein beliebiges Canvas — auch für die
+// Live-Vorschau im Dialog.
+export async function zeichnePostkarte(
+  karte: HTMLCanvasElement,
+  foto: SzenenFoto,
+  optionen: PostkartenOptionen,
+): Promise<void> {
+  const farben = STIL_FARBEN[optionen.stil]
   const breite = 1200
   const hoehe = 860
-  const karte = document.createElement("canvas")
   karte.width = breite
   karte.height = hoehe
   const ctx = karte.getContext("2d")
-  if (!ctx) throw new Error("kein 2d-Kontext")
+  if (!ctx) return
 
-  // Rahmen: weiss mit feinem Braunrand wie eine alte Karte
-  ctx.fillStyle = "#f7f2e2"
+  ctx.fillStyle = farben.papier
   ctx.fillRect(0, 0, breite, hoehe)
 
-  // Bildfläche mit Berner Himmel als Grund (AR-Frames sind transparent,
-  // wo die Kamera war — der Himmel füllt das auf)
   const rand = 46
   const flaecheB = breite - rand * 2
   const flaecheH = hoehe - rand * 2 - 84
-  const grund = ctx.createLinearGradient(0, rand, 0, rand + flaecheH)
-  grund.addColorStop(0, "#7ec8e3")
-  grund.addColorStop(0.72, "#cfe9f5")
-  grund.addColorStop(0.74, "#5b8c3a")
-  grund.addColorStop(1, "#3e6a22")
-  ctx.fillStyle = grund
-  ctx.fillRect(rand, rand, flaecheB, flaecheH)
 
-  // Schnappschuss einpassen (contain, zentriert)
-  const skala = Math.min(flaecheB / bild.width, flaecheH / bild.height)
-  const zielB = bild.width * skala
-  const zielH = bild.height * skala
-  ctx.imageSmoothingEnabled = true
-  ctx.drawImage(
-    bild,
-    rand + (flaecheB - zielB) / 2,
-    rand + (flaecheH - zielH) / 2,
-    zielB,
-    zielH,
-  )
-  ctx.strokeStyle = "#4a3a28"
+  // Grund: echtes Kamerabild, sonst Himmel-Verlauf
+  const hintergrund = foto.hintergrund
+    ? await ladeBild(foto.hintergrund).catch(() => null)
+    : null
+  if (hintergrund) {
+    zeichneCover(ctx, hintergrund, rand, rand, flaecheB, flaecheH)
+  } else {
+    const grund = ctx.createLinearGradient(0, rand, 0, rand + flaecheH)
+    grund.addColorStop(0, farben.himmel[0])
+    grund.addColorStop(0.72, farben.himmel[1])
+    grund.addColorStop(0.74, "#5b8c3a")
+    grund.addColorStop(1, "#3e6a22")
+    ctx.fillStyle = grund
+    ctx.fillRect(rand, rand, flaecheB, flaecheH)
+  }
+
+  // Virtuelle Szene darüber — cover, damit nichts komisch schwimmt.
+  // Mit Kamerabild dahinter deckt cover beide gleich und die Blöcke
+  // bleiben ungefähr da, wo sie im Sucher waren.
+  const vordergrund = await ladeBild(foto.vordergrund).catch(() => null)
+  if (vordergrund) {
+    zeichneCover(ctx, vordergrund, rand, rand, flaecheB, flaecheH)
+  }
+
+  ctx.strokeStyle = farben.rand
   ctx.lineWidth = 6
   ctx.strokeRect(rand - 3, rand - 3, flaecheB + 6, flaecheH + 6)
 
-  // Briefmarke oben rechts: Bern-Rot mit Bär-Silhouette (Pixel-Stil)
+  // Briefmarke: Pixel-Bär
   const markeX = breite - rand - 128
   const markeY = rand + 16
-  ctx.fillStyle = "#d5372c"
+  ctx.fillStyle = optionen.stil === "bern" ? "#1a140f" : "#d5372c"
   ctx.fillRect(markeX, markeY, 112, 132)
   ctx.strokeStyle = "#f7f2e2"
   ctx.setLineDash([8, 6])
   ctx.lineWidth = 4
   ctx.strokeRect(markeX + 5, markeY + 5, 102, 122)
   ctx.setLineDash([])
-  ctx.fillStyle = "#1a140f"
-  // grober Pixel-Bär
+  ctx.fillStyle = optionen.stil === "bern" ? "#f1c232" : "#1a140f"
   const b = 8
   const baer: [number, number, number, number][] = [
     [3, 8, 8, 4],
@@ -72,12 +125,13 @@ export async function bauePostkarte(bildUrl: string): Promise<Blob> {
   ctx.font = "bold 22px monospace"
   ctx.fillText("BÄRN", markeX + 22, markeY + 30)
 
-  // Gruss und Datum unten
-  ctx.fillStyle = "#2b2118"
+  // Gruss — vom Spieler frei wählbar
+  const gruss = optionen.gruss.trim() || "Grüsse us Bärn!"
+  ctx.fillStyle = farben.text
   ctx.font = "bold 54px monospace"
-  ctx.fillText("Grüsse us Bärn!", rand + 6, hoehe - 40)
+  ctx.fillText(kuerze(ctx, gruss, breite - rand * 2 - 320), rand + 6, hoehe - 40)
   ctx.font = "26px monospace"
-  ctx.fillStyle = "#6b5a40"
+  ctx.fillStyle = farben.neben
   const datum = new Date().toLocaleDateString("de-CH", {
     day: "numeric",
     month: "long",
@@ -86,7 +140,14 @@ export async function bauePostkarte(bildUrl: string): Promise<Blob> {
   ctx.textAlign = "right"
   ctx.fillText(`BärnGo · ${datum}`, breite - rand, hoehe - 40)
   ctx.textAlign = "left"
+}
 
+export async function bauePostkarte(
+  foto: SzenenFoto,
+  optionen: PostkartenOptionen,
+): Promise<Blob> {
+  const karte = document.createElement("canvas")
+  await zeichnePostkarte(karte, foto, optionen)
   const blob = await new Promise<Blob | null>((res) =>
     karte.toBlob(res, "image/jpeg", 0.92),
   )
@@ -117,6 +178,55 @@ export async function teilePostkarte(blob: Blob): Promise<"geteilt" | "geladen">
   link.click()
   window.setTimeout(() => URL.revokeObjectURL(url), 4000)
   return "geladen"
+}
+
+// Bild formatfüllend einpassen (cover) und dabei hochkant/quer angleichen:
+// das AR-Kamerabild kommt oft quer vom Sensor, der Sucher ist hochkant.
+function zeichneCover(
+  ctx: CanvasRenderingContext2D,
+  bild: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  const zielQuer = w >= h
+  const bildQuer = bild.width >= bild.height
+  if (zielQuer !== bildQuer) {
+    // 90° drehen, damit die Orientierung stimmt
+    ctx.translate(x + w / 2, y + h / 2)
+    ctx.rotate(Math.PI / 2)
+    const skala = Math.max(h / bild.width, w / bild.height)
+    ctx.drawImage(
+      bild,
+      (-bild.width * skala) / 2,
+      (-bild.height * skala) / 2,
+      bild.width * skala,
+      bild.height * skala,
+    )
+  } else {
+    const skala = Math.max(w / bild.width, h / bild.height)
+    const zielB = bild.width * skala
+    const zielH = bild.height * skala
+    ctx.drawImage(bild, x + (w - zielB) / 2, y + (h - zielH) / 2, zielB, zielH)
+  }
+  ctx.restore()
+}
+
+function kuerze(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxBreite: number,
+): string {
+  let t = text
+  while (t.length > 4 && ctx.measureText(t).width > maxBreite) {
+    t = t.slice(0, -1)
+  }
+  return t === text ? t : `${t}…`
 }
 
 function ladeBild(url: string): Promise<HTMLImageElement> {

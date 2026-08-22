@@ -24,7 +24,14 @@ import {
 import { useBauen } from "../useBauen"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
-import { bauePostkarte, teilePostkarte } from "./postkarte"
+import {
+  bauePostkarte,
+  POSTKARTEN_STILE,
+  teilePostkarte,
+  zeichnePostkarte,
+  type PostkartenStil,
+  type SzenenFoto,
+} from "./postkarte"
 import { starteBauenAr } from "./starteBauenAr"
 import { startePlattenSzene, type PlattenSteuerung } from "./startePlattenSzene"
 
@@ -98,8 +105,18 @@ export function BauenPlatte() {
           : aktion === "abbauen"
             ? "Abbauen · Hand"
             : "Wähle Block oder Werkzeug"
-  const fotoRef = useRef<(() => Promise<string>) | null>(null)
+  const fotoRef = useRef<(() => Promise<SzenenFoto>) | null>(null)
   const [fotoLaeuft, setFotoLaeuft] = useState(false)
+  const [foto, setFoto] = useState<SzenenFoto | null>(null)
+  const [gruss, setGruss] = useState("Grüsse us Bärn!")
+  const [stil, setStil] = useState<PostkartenStil>("klassisch")
+  const vorschau = useRef<HTMLCanvasElement>(null)
+
+  // Live-Vorschau neu zeichnen, wenn Foto, Gruss oder Stil wechseln
+  useEffect(() => {
+    if (!foto || !vorschau.current) return
+    void zeichnePostkarte(vorschau.current, foto, { gruss, stil })
+  }, [foto, gruss, stil])
   const steuerung = useRef<PlattenSteuerung>({
     wahl: () => wahl,
     kannSetzen: () =>
@@ -230,9 +247,21 @@ export function BauenPlatte() {
     if (!mach || fotoLaeuft) return
     setFotoLaeuft(true)
     try {
-      const bild = await mach()
-      const blob = await bauePostkarte(bild)
+      setFoto(await mach())
+    } catch {
+      setHinweis("Foto hat nicht geklappt — probier es nochmal.")
+    } finally {
+      setFotoLaeuft(false)
+    }
+  }
+
+  async function sendePostkarte() {
+    if (!foto || fotoLaeuft) return
+    setFotoLaeuft(true)
+    try {
+      const blob = await bauePostkarte(foto, { gruss, stil })
       const ausgang = await teilePostkarte(blob)
+      setFoto(null)
       setHinweis(
         ausgang === "geteilt"
           ? "Postkarte geteilt!"
@@ -417,6 +446,52 @@ export function BauenPlatte() {
             >
               {lebensgross ? "✓ Lebensgross · 1 m" : "Lebensgross · 1 m"}
             </button>
+          </div>
+        ) : null}
+        {foto ? (
+          <div className="mc-postkarte-dialog">
+            <canvas ref={vorschau} className="mc-postkarte-vorschau" />
+            <input
+              type="text"
+              className="mc-postkarte-text"
+              value={gruss}
+              maxLength={26}
+              placeholder="Dein Gruss…"
+              onChange={(event) => setGruss(event.target.value)}
+            />
+            <div className="mc-varianten">
+              {POSTKARTEN_STILE.map((eintrag) => (
+                <button
+                  key={eintrag.id}
+                  type="button"
+                  className={
+                    stil === eintrag.id
+                      ? "mc-btn mc-btn-toggle mc-btn-an"
+                      : "mc-btn mc-btn-toggle"
+                  }
+                  onClick={() => setStil(eintrag.id)}
+                >
+                  {eintrag.name}
+                </button>
+              ))}
+            </div>
+            <div className="mc-ar-startzeile">
+              <button
+                type="button"
+                className="mc-btn mc-platte-ar"
+                disabled={fotoLaeuft}
+                onClick={() => void sendePostkarte()}
+              >
+                {fotoLaeuft ? "…" : "Teilen / Speichern"}
+              </button>
+              <button
+                type="button"
+                className="mc-btn mc-btn-toggle"
+                onClick={() => setFoto(null)}
+              >
+                Abbrechen
+              </button>
+            </div>
           </div>
         ) : null}
         {arStatus === "an" ? (

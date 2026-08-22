@@ -309,6 +309,45 @@
   image-rendering: pixelated;
 }
 
+/* Postkarten-Dialog: Vorschau + Gruss + Stil, auch im AR-Overlay */
+.mc-postkarte-dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 90;
+  width: min(94vw, 30rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  background: #2b2118f5;
+  border: 3px solid #f1c232;
+  border-radius: 12px;
+  box-shadow: 0 6px 0 #0008;
+  pointer-events: auto;
+}
+
+.mc-postkarte-vorschau {
+  width: 100%;
+  height: auto;
+  border: 2px solid #4a3a28;
+  border-radius: 6px;
+  background: #111;
+}
+
+.mc-postkarte-text {
+  font-family: var(--font-vt), ui-monospace, monospace;
+  font-size: 1.05rem;
+  color: #2b2118;
+  background: #f7f2e2;
+  border: 3px solid #4a3a28;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .mc-ar-startzeile {
   display: flex;
   gap: 0.5rem;

@@ -38,7 +38,9 @@ export type PlattenSteuerung = {
   aufSchlag: (blockId: string) => boolean
   // Meldet eine Funktion an, die den nächsten gerenderten Frame
   // als Daten-URL liefert (für die Postkarte).
-  fotoBereit?: (mach: () => Promise<string>) => void
+  fotoBereit?: (
+    mach: () => Promise<{ vordergrund: string; hintergrund?: string }>,
+  ) => void
 }
 
 export async function startePlattenSzene(
@@ -150,7 +152,9 @@ export async function startePlattenSzene(
     kamera.lookAt(0, 0.12, 0)
   }
 
-  let fotoWunsch: ((url: string) => void) | null = null
+  let fotoWunsch:
+    | ((foto: { vordergrund: string; hintergrund?: string }) => void)
+    | null = null
   let zeichnet = false
   let zeichneNochmal = false
   async function zeichneBloecke() {
@@ -415,14 +419,17 @@ export async function startePlattenSzene(
       // Direkt nach dem Render ist der Puffer noch gültig
       const mach = fotoWunsch
       fotoWunsch = null
-      mach(leinwand.toDataURL("image/png"))
+      mach({ vordergrund: leinwand.toDataURL("image/png") })
     }
     loopId = requestAnimationFrame(tick)
   }
   loopId = requestAnimationFrame(tick)
 
   steuerung.fotoBereit?.(
-    () => new Promise<string>((res) => { fotoWunsch = res }),
+    () =>
+      new Promise<{ vordergrund: string; hintergrund?: string }>((res) => {
+        fotoWunsch = res
+      }),
   )
 
   return () => {
