@@ -1,4 +1,4 @@
-import { sehenswuerdigkeitById } from "./katalog"
+import { quizFrage } from "./katalog"
 
 export type Bewertung = {
   korrekt: boolean
@@ -6,11 +6,12 @@ export type Bewertung = {
 
 export function bewerteAntwort(
   sehenswuerdigkeitId: string,
+  frageId: number,
   antwort: string,
 ): Bewertung {
-  const sehenswuerdigkeit = sehenswuerdigkeitById(sehenswuerdigkeitId)
-  if (!sehenswuerdigkeit) {
+  const quiz = quizFrage(sehenswuerdigkeitId, frageId)
+  if (!quiz) {
     return { korrekt: false }
   }
-  return { korrekt: sehenswuerdigkeit.quiz.richtigeAntwort === antwort }
+  return { korrekt: quiz.richtigeAntwort === antwort }
 }

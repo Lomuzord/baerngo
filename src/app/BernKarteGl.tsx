@@ -1,16 +1,34 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { BERN_KARTE, kameraFuerSpieler, SPIELER_KAMERA } from "@/lib/karte"
-import { applyMinecraftLook, MINECRAFT_GEBAEUDE } from "@/lib/minecraftStyle"
 import { gegenstandById } from "@/lib/gegenstaende"
+import {
+  BERN_KARTE,
+  kameraFuerSpieler,
+  markerSkala,
+  SPIELER_KAMERA,
+} from "@/lib/karte"
+import type { Lage } from "@/lib/katalog"
+import { applyMinecraftLook, MINECRAFT_GEBAEUDE } from "@/lib/minecraftStyle"
 import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { listSichtModelle, sichtModellById, type SichtModell } from "@/lib/platzierung"
-import { useBauen } from "./useBauen"
-import { starteModellSzene } from "./starteModellSzene"
+import {
+  distanzMeter,
+  entfernungText,
+  istNahGenug,
+  kreisUm,
+} from "@/lib/reichweite"
+import { umweltAusMerkmalen, type Umwelt } from "@/lib/umwelt"
+import { spieleHaptik } from "@/lib/haptik"
+import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
+import { maleIsoWuerfel } from "./maleIsoWuerfel"
+import { erstelleSichtEbene, type SichtEbene } from "./sichtEbene"
+import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
+import { useInventar } from "./useInventar"
 import { useSpielerOrt } from "./useSpielerOrt"
+import { useWildspawn } from "./useWildspawn"
 
 export function BernKarteGl({
   gewaehltId,
@@ -22,25 +40,49 @@ export function BernKarteGl({
   const kasten = useRef<HTMLDivElement>(null)
   const karte = useRef<mapboxgl.Map | null>(null)
   const spielerMarker = useRef<mapboxgl.Marker | null>(null)
-  const gebaute = useRef<mapboxgl.Marker[]>([])
+  const wildMarker = useRef<Map<string, mapboxgl.Marker>>(new Map())
+  const trainerStop = useRef<(() => void) | null>(null)
+  const sichtEbene = useRef<SichtEbene | null>(null)
   const pins = useRef<Map<string, HTMLElement>>(new Map())
   const hatZentriert = useRef(false)
   const onWaehleRef = useRef(onWaehle)
   onWaehleRef.current = onWaehle
   const gewaehltRef = useRef(gewaehltId)
   gewaehltRef.current = gewaehltId
-  const pinKlick = useRef(false)
-  const { bloecke } = useBauen()
+  const [hinweis, setHinweis] = useState<string | null>(null)
+  const [karteBereit, setKarteBereit] = useState(false)
+  // Zählt hoch, wenn der WebGL-Kontext der Karte verloren geht —
+  // der Init-Effekt baut die Karte dann komplett neu auf.
+  const [kartenLauf, setKartenLauf] = useState(0)
+
+  useEffect(() => {
+    if (!hinweis) return
+    const timer = window.setTimeout(() => setHinweis(null), 2200)
+    return () => window.clearTimeout(timer)
+  }, [hinweis])
   const spieler = useSpielerOrt()
   const spielerRef = useRef(spieler)
   spielerRef.current = spieler
+  const { sammle } = useInventar()
+  const umweltAn = useCallback((lage: Lage): Umwelt => {
+    const map = karte.current
+    if (!map || !map.isStyleLoaded()) return "unbekannt"
+    return umweltAusMerkmalen(merkmaleAn(map, lage))
+  }, [])
+  const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit)
+  const nimmRef = useRef(nimm)
+  nimmRef.current = nimm
+  const bloeckeRef = useRef(bloecke)
+  bloeckeRef.current = bloecke
+  const sammleRef = useRef(sammle)
+  sammleRef.current = sammle
 
   useEffect(() => {
     if (!kasten.current) return
     const el = kasten.current
     let map: mapboxgl.Map | undefined
     let cancelled = false
-    const modellStops: Array<() => void> = []
+    let neubauTimer = 0
 
     void (async () => {
       const antwort = await fetch("/api/mapbox/session")
@@ -69,28 +111,41 @@ export function BernKarteGl({
         maxZoom: SPIELER_KAMERA.maxZoom,
         antialias: true,
         attributionControl: true,
-        preserveDrawingBuffer: true,
       })
       karte.current = map
 
+      // Sicherheitsnetz: Verliert die Karte ihren WebGL-Kontext (z. B.
+      // weil der Browser Kontexte verdrängt), bleibt sonst nur eine
+      // blaue Fläche zurück. Dann Karte neu aufbauen — höchstens 3-mal,
+      // damit ein kranker GPU-Zustand keine Endlosschleife auslöst.
+      map.getCanvas().addEventListener("webglcontextlost", () => {
+        if (cancelled || kartenLauf >= 3) return
+        neubauTimer = window.setTimeout(
+          () => setKartenLauf((lauf) => lauf + 1),
+          250,
+        )
+      })
+
       map.on("load", () => {
         if (!map) return
-        applyMinecraftLook(map)
+        applyMinecraftLook(map as never)
         if (!map.getLayer("minecraft-buildings")) {
-          map.addLayer(MINECRAFT_GEBAEUDE)
+          map.addLayer(MINECRAFT_GEBAEUDE as never)
+        }
+        // Die Voxel-Bauwerke als echte 3D-Objekte in der Kartenszene —
+        // sie drehen und zoomen mit der Kamera wie richtige Gebäude.
+        if (!map.getLayer("sicht-modelle-3d")) {
+          const ebene = erstelleSichtEbene()
+          sichtEbene.current = ebene
+          map.addLayer(ebene as never)
+          ebene.setzeWahl(gewaehltRef.current)
         }
         pins.current.clear()
         for (const modell of listSichtModelle()) {
           const mesh = meshFuerSehenswuerdigkeit(modell.id)
           const el = mesh
-            ? schwebeElement(modell, (id) => {
-                pinKlick.current = true
-                onWaehleRef.current(id)
-              })
-            : pinElement(modell, (id) => {
-                pinKlick.current = true
-                onWaehleRef.current(id)
-              })
+            ? schwebeElement(modell, (id) => onWaehleRef.current(id))
+            : pinElement(modell, (id) => onWaehleRef.current(id))
           if (modell.id === gewaehltRef.current) {
             el.classList.add(
               mesh ? "mc-pokestop-aktiv" : "mc-ort-pin-aktiv",
@@ -100,82 +155,147 @@ export function BernKarteGl({
           new mapboxgl.Marker({ element: el, anchor: "bottom" })
             .setLngLat([modell.lage.lng, modell.lage.lat])
             .addTo(map)
-          if (mesh) {
-            const buehne = el.querySelector<HTMLElement>(".mc-pokestop-buehne")
-            if (buehne) {
-              void starteModellSzene(buehne, mesh, () =>
-                el.classList.contains("mc-pokestop-aktiv") ? 0.05 : 0.014,
-              ).then((stop) => {
-                if (cancelled) stop()
-                else modellStops.push(stop)
-              })
-            }
-          }
         }
         map.on("click", () => {
-          if (pinKlick.current) {
-            pinKlick.current = false
-            return
-          }
           onWaehleRef.current(null)
         })
-        setzeSpielerMarker(map, spielerMarker, spielerRef.current)
-        if (spielerRef.current.status === "bereit" && !gewaehltRef.current) {
-          map.jumpTo(kameraFuerSpieler(spielerRef.current.lage))
-          hatZentriert.current = true
+        if (spielerRef.current.status === "bereit") {
+          setzeSammelring(
+            map,
+            spielerRef.current.lage,
+            sammelRadius(spielerRef.current.genauigkeit),
+          )
         }
+        setzeSpielerMarker(
+          map,
+          spielerMarker,
+          spielerRef.current,
+          trainerStop,
+          () => trainerRichtung(karte.current, spielerRef.current),
+        )
+        if (gewaehltRef.current) {
+          // Deeplink mit ?ort=… — direkt zur gewählten Sehenswürdigkeit
+          const modell = sichtModellById(gewaehltRef.current)
+          if (modell) {
+            map.jumpTo({
+              center: [modell.lage.lng, modell.lage.lat],
+              zoom: SPIELER_KAMERA.zoom,
+              pitch: SPIELER_KAMERA.pitch,
+              bearing: SPIELER_KAMERA.bearing,
+            })
+            hatZentriert.current = true
+          }
+        } else if (spielerRef.current.status === "bereit") {
+          zentriereAufLage(map, spielerRef.current.lage, hatZentriert)
+        }
+        passeMarkerSkalaAn(map)
+        map.on("zoom", () => {
+          const aktiv = karte.current
+          if (aktiv) passeMarkerSkalaAn(aktiv)
+        })
+        map.on("rotate", () => {
+          const aktiv = karte.current
+          if (aktiv) passeMarkerSkalaAn(aktiv)
+        })
+        map.once("idle", () => setKarteBereit(true))
       })
     })()
 
     return () => {
       cancelled = true
-      modellStops.forEach((stop) => stop())
-      gebaute.current.forEach((marker) => marker.remove())
-      gebaute.current = []
+      window.clearTimeout(neubauTimer)
+      setKarteBereit(false)
+      wildMarker.current.forEach((marker) => marker.remove())
+      wildMarker.current.clear()
+      trainerStop.current?.()
+      trainerStop.current = null
       spielerMarker.current?.remove()
       spielerMarker.current = null
       karte.current = null
       map?.remove()
     }
-  }, [])
+    // kartenLauf erzwingt den Neuaufbau nach Kontextverlust
+  }, [kartenLauf])
 
   useEffect(() => {
     const map = karte.current
     if (!map) return
-
-    const zeichne = () => {
-      gebaute.current.forEach((marker) => marker.remove())
-      gebaute.current = bloecke.map((block) => {
-        const item = gegenstandById(block.gegenstandId)
-        return new mapboxgl.Marker({
-          element: isoBlockElement(block.gegenstandId, item?.textur),
-          anchor: "bottom",
-        })
-          .setLngLat([block.lng, block.lat])
-          .addTo(map)
+    if (spieler.status === "bereit" && map.isStyleLoaded()) {
+      setzeSammelring(map, spieler.lage, sammelRadius(spieler.genauigkeit))
+    }
+    setzeSpielerMarker(
+      map,
+      spielerMarker,
+      spieler,
+      trainerStop,
+      () => trainerRichtung(karte.current, spielerRef.current),
+    )
+    if (spieler.status === "bereit" && !gewaehltRef.current) {
+      const mitte = map.getCenter()
+      const sprung = distanzMeter(spieler.lage, {
+        lat: mitte.lat,
+        lng: mitte.lng,
       })
-    }
-
-    if (map.loaded()) zeichne()
-    else map.once("load", zeichne)
-    return () => {
-      map.off("load", zeichne)
-    }
-  }, [bloecke])
-
-  useEffect(() => {
-    const map = karte.current
-    if (!map) return
-    setzeSpielerMarker(map, spielerMarker, spieler)
-    if (spieler.status === "bereit" && !hatZentriert.current) {
-      const geheHin = () => {
-        map.easeTo({ ...kameraFuerSpieler(spieler.lage), duration: 700 })
-        hatZentriert.current = true
+      if (!hatZentriert.current || sprung > 250) {
+        hatZentriert.current = false
+        zentriereAufLage(map, spieler.lage, hatZentriert)
       }
-      if (map.loaded()) geheHin()
-      else map.once("load", geheHin)
     }
   }, [spieler])
+
+  useEffect(() => {
+    const map = karte.current
+    if (!map) return
+    const leben = new Set(bloecke.map((block) => block.id))
+    const lage = spieler.status === "bereit" ? spieler.lage : null
+    const reichweite =
+      spieler.status === "bereit" ? sammelRadius(spieler.genauigkeit) : 0
+    for (const block of bloecke) {
+      const nah = lage
+        ? istNahGenug(lage, block.lage, reichweite)
+        : false
+      let marker = wildMarker.current.get(block.id)
+      if (!marker) {
+        marker = new mapboxgl.Marker({
+          element: wildElement(block, (id) => {
+            const aktuell = spielerRef.current
+            if (aktuell.status !== "bereit") {
+              setHinweis("Standort fehlt")
+              return
+            }
+            const ziel =
+              bloeckeRef.current.find((eintrag) => eintrag.id === id) ?? block
+            const distanz = distanzMeter(aktuell.lage, ziel.lage)
+            const reich = sammelRadius(aktuell.genauigkeit)
+            if (distanz > reich) {
+              spieleHaptik("zu-weit")
+              setHinweis(`Noch ${entfernungText(distanz - reich)}`)
+              return
+            }
+            const weg = nimmRef.current(id)
+            if (!weg) {
+              setHinweis("Block ist weg")
+              return
+            }
+            sammleRef.current(weg.gegenstandId)
+            spieleHaptik("sammeln")
+            const name = gegenstandById(weg.gegenstandId)?.name ?? weg.gegenstandId
+            setHinweis(`+1 ${name}`)
+          }),
+          anchor: "bottom",
+        })
+          .setLngLat([block.lage.lng, block.lage.lat])
+          .addTo(map)
+        wildMarker.current.set(block.id, marker)
+      }
+      marker.getElement().classList.toggle("mc-wild-nah", nah)
+    }
+    for (const [id, marker] of wildMarker.current) {
+      if (leben.has(id)) continue
+      marker.remove()
+      wildMarker.current.delete(id)
+    }
+  }, [bloecke, spieler, karteBereit])
 
   useEffect(() => {
     pins.current.forEach((el, id) => {
@@ -185,6 +305,7 @@ export function BernKarteGl({
         id === gewaehltId,
       )
     })
+    sichtEbene.current?.setzeWahl(gewaehltId)
     const map = karte.current
     const modell = gewaehltId ? sichtModellById(gewaehltId) : undefined
     if (!map || !modell) return
@@ -195,8 +316,7 @@ export function BernKarteGl({
         duration: 500,
       })
     }
-    if (map.loaded()) geheHin()
-    else map.once("load", geheHin)
+    geheHin()
   }, [gewaehltId])
 
   function zentriereAufMich() {
@@ -217,6 +337,10 @@ export function BernKarteGl({
       >
         Hier
       </button>
+      {hinweis ? <p className="mc-wild-hinweis">{hinweis}</p> : null}
+      <p className="mc-wild-zahl">
+        {bloecke.length} Blöcke in der Nähe
+      </p>
       {spieler.status !== "bereit" ? (
         <p className="mc-ort-status" data-testid="spieler-ort">
           {spieler.status === "verweigert"
@@ -241,6 +365,108 @@ export function BernKarteGl({
   )
 }
 
+function passeMarkerSkalaAn(map: mapboxgl.Map) {
+  map.getContainer().style.setProperty(
+    "--mc-marker-skala",
+    String(markerSkala(map.getZoom())),
+  )
+}
+
+function trainerRichtung(
+  map: mapboxgl.Map | null,
+  spieler: ReturnType<typeof useSpielerOrt>,
+): TrainerRichtung {
+  if (spieler.status !== "bereit") return { karte: map?.getBearing() ?? 0 }
+  return {
+    blick: spieler.blick,
+    karte: map?.getBearing() ?? SPIELER_KAMERA.bearing,
+    pitch: map?.getPitch() ?? SPIELER_KAMERA.pitch,
+    geht: Boolean(spieler.geht),
+  }
+}
+
+function zentriereAufLage(
+  map: mapboxgl.Map,
+  lage: Lage,
+  fertig: { current: boolean },
+) {
+  if (fertig.current) return
+  const geheHin = () => {
+    if (fertig.current) return
+    map.resize()
+    map.jumpTo(kameraFuerSpieler(lage))
+    fertig.current = true
+  }
+  if (map.isStyleLoaded()) {
+    geheHin()
+    return
+  }
+  map.once("idle", geheHin)
+}
+
+function setzeSammelring(map: mapboxgl.Map, lage: Lage, radiusMeter: number) {
+  const ring = kreisUm(lage, radiusMeter).map((punkt) => [
+    punkt.lng,
+    punkt.lat,
+  ])
+  ring.push(ring[0]!)
+  const daten = {
+    type: "Feature" as const,
+    geometry: { type: "Polygon" as const, coordinates: [ring] },
+    properties: {},
+  }
+  const quelle = map.getSource("sammelring") as mapboxgl.GeoJSONSource | undefined
+  if (quelle) {
+    quelle.setData(daten)
+    return
+  }
+  map.addSource("sammelring", { type: "geojson", data: daten })
+  map.addLayer({
+    id: "sammelring-fill",
+    type: "fill",
+    source: "sammelring",
+    paint: {
+      "fill-color": "#2ec8ff",
+      "fill-opacity": 0.14,
+    },
+  })
+  map.addLayer({
+    id: "sammelring-linie",
+    type: "line",
+    source: "sammelring",
+    paint: {
+      "line-color": "#7ef0ff",
+      "line-width": 2,
+      "line-opacity": 0.7,
+    },
+  })
+}
+
+function merkmaleAn(map: mapboxgl.Map, lage: Lage) {
+  const punkt = map.project([lage.lng, lage.lat])
+  const canvas = map.getCanvas()
+  if (
+    punkt.x < -24 ||
+    punkt.y < -24 ||
+    punkt.x > canvas.clientWidth + 24 ||
+    punkt.y > canvas.clientHeight + 24
+  ) {
+    return []
+  }
+  const box: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+    [punkt.x - 28, punkt.y - 28],
+    [punkt.x + 28, punkt.y + 28],
+  ]
+  return map.queryRenderedFeatures(box).map((feature) => ({
+    layerId: feature.layer?.id ?? "",
+    typ: feature.layer?.type,
+    klasse:
+      typeof feature.properties?.class === "string"
+        ? feature.properties.class
+        : undefined,
+  }))
+}
+
 function schwebeElement(
   modell: SichtModell,
   onWaehle: (id: string) => void,
@@ -252,11 +478,10 @@ function schwebeElement(
   root.dataset.modell = modell.modellId
   root.setAttribute("aria-label", modell.name)
   root.innerHTML = `
-    <span class="mc-pokestop-schwebe">
-      <span class="mc-pokestop-buehne"></span>
+    <span class="mc-pokestop-inhalt">
+      <span class="mc-pokestop-scheibe"></span>
+      <span class="mc-pokestop-ring"></span>
     </span>
-    <span class="mc-pokestop-scheibe"></span>
-    <span class="mc-pokestop-ring"></span>
   `
   root.addEventListener("click", (event) => {
     event.stopPropagation()
@@ -286,20 +511,91 @@ function pinElement(
   return root
 }
 
+function wildElement(
+  block: WildBlock,
+  onTipp: (id: string) => void,
+) {
+  const item = gegenstandById(block.gegenstandId)
+  const textur = item?.textur ?? "/bloecke/erde.png"
+  const seite =
+    block.gegenstandId === "gras" ? "/bloecke/erde.png" : textur
+  const root = document.createElement("button")
+  root.type = "button"
+  root.className = "mc-wild"
+  root.dataset.haptik = "aus"
+  root.dataset.wild = block.id
+  root.dataset.umwelt = block.umwelt
+  root.setAttribute("aria-label", item?.name ?? block.gegenstandId)
+  root.innerHTML = `
+    <span class="mc-wild-schwebe"></span>
+    <span class="mc-wild-schatten"></span>
+  `
+  const buehne = root.querySelector<HTMLElement>(".mc-wild-schwebe")
+  if (buehne) void maleIsoWuerfel(buehne, textur, seite)
+  let start: { x: number; y: number } | null = null
+  let perZeiger = false
+  let perZeigerTimer = 0
+  root.addEventListener("pointerdown", (event) => {
+    if (event.button === 2) return
+    // KEIN stopPropagation: sonst kann die Karte nicht mehr gepannt
+    // werden, wenn die Geste auf einem Block beginnt.
+    perZeiger = true
+    window.clearTimeout(perZeigerTimer)
+    perZeigerTimer = window.setTimeout(() => {
+      perZeiger = false
+    }, 500)
+    start = { x: event.clientX, y: event.clientY }
+  })
+  root.addEventListener("pointerup", (event) => {
+    if (!start) return
+    const ruhig =
+      Math.hypot(event.clientX - start.x, event.clientY - start.y) < 22
+    start = null
+    if (ruhig) {
+      event.stopPropagation()
+      onTipp(block.id)
+    }
+  })
+  root.addEventListener("click", (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (perZeiger) {
+      perZeiger = false
+      return
+    }
+    onTipp(block.id)
+  })
+  return root
+}
+
 function setzeSpielerMarker(
   map: mapboxgl.Map,
   markerRef: { current: mapboxgl.Marker | null },
   spieler: ReturnType<typeof useSpielerOrt>,
+  trainerStop: { current: (() => void) | null },
+  blick: () => TrainerRichtung,
 ) {
   if (spieler.status !== "bereit") return
   const { lng, lat } = spieler.lage
   if (!markerRef.current) {
+    const el = spielerElement()
     markerRef.current = new mapboxgl.Marker({
-      element: spielerElement(),
+      element: el,
       anchor: "bottom",
     })
       .setLngLat([lng, lat])
       .addTo(map)
+    const buehne = el.querySelector<HTMLElement>(".mc-trainer-buehne")
+    if (buehne) {
+      void starteTrainerSzene(buehne, blick).then((stop) => {
+        if (!el.isConnected) {
+          stop()
+          return
+        }
+        trainerStop.current?.()
+        trainerStop.current = stop
+      })
+    }
   } else {
     markerRef.current.setLngLat([lng, lat])
   }
@@ -307,28 +603,16 @@ function setzeSpielerMarker(
 
 function spielerElement() {
   const root = document.createElement("div")
-  root.className = "mc-spieler"
+  root.className = "mc-trainer"
   root.dataset.spieler = "hier"
   root.innerHTML = `
-    <span class="mc-iso mc-iso-spieler">
-      <span class="mc-face mc-face-front"></span>
-      <span class="mc-face mc-face-side"></span>
-      <span class="mc-face mc-face-top"></span>
-    </span>
-  `
-  return root
-}
-
-function isoBlockElement(id: string, textur?: string) {
-  const root = document.createElement("div")
-  root.className = "mc-gl-marker"
-  root.dataset.gebaut = id
-  const url = textur ?? "/bloecke/erde.png"
-  root.innerHTML = `
-    <span class="mc-iso mc-iso-klein">
-      <span class="mc-face mc-face-front" style="background-image:url('${url}')"></span>
-      <span class="mc-face mc-face-side" style="background-image:url('${url}')"></span>
-      <span class="mc-face mc-face-top" style="background-image:url('${url}')"></span>
+    <span class="mc-trainer-mass">
+      <span class="mc-trainer-schatten"></span>
+      <span class="mc-trainer-ring"></span>
+      <span class="mc-trainer-ring mc-trainer-ring-2"></span>
+      <span class="mc-trainer-schwebe">
+        <span class="mc-trainer-buehne"></span>
+      </span>
     </span>
   `
   return root

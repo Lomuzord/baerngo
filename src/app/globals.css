@@ -39,6 +39,43 @@
   background: #2b2118;
   border-bottom: 6px solid #1a140f;
   padding: calc(0.6rem + env(safe-area-inset-top)) 0.75rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mc-ton-btn {
+  background: none;
+  border: 2px solid #4a3a28;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  cursor: pointer;
+}
+
+.mc-intro {
+  position: absolute;
+  left: 50%;
+  top: calc(4rem + env(safe-area-inset-top));
+  translate: -50% 0;
+  z-index: 60;
+  width: min(92vw, 22rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem;
+  background: #2b2118f5;
+  border: 3px solid #f1c232;
+  border-radius: 12px;
+  box-shadow: 0 6px 0 #0008;
+}
+
+.mc-intro-zeile {
+  margin: 0;
+  color: #ffe9c7;
+  font-size: 0.92rem;
+  text-shadow: 1px 1px 0 #000;
 }
 
 .mc-kicker {
@@ -72,6 +109,136 @@
   background: #1a140f;
   border: 4px solid #111;
   overflow-x: auto;
+}
+
+.mc-inv-fenster {
+  background: #c6c6c6;
+  border: 4px solid #111;
+  box-shadow: inset 3px 3px 0 #ececec, inset -3px -3px 0 #555;
+  padding: 10px 8px 8px;
+}
+
+.mc-lager,
+.mc-hotbar-raster {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 3px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mc-hotbar-raster {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 3px solid #8b8b8b;
+}
+
+.mc-lager > li,
+.mc-hotbar-raster > li {
+  min-width: 0;
+}
+
+.mc-hotbar-leiste {
+  margin: 0 0 0.7rem;
+  padding: 6px;
+  border: 4px solid #111;
+  background: #c6c6c6;
+  box-shadow: inset 2px 2px 0 #fff8, inset -2px -2px 0 #555;
+}
+
+.mc-inv-fenster .mc-slot,
+.mc-hotbar-raster .mc-slot {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 2px;
+  touch-action: none;
+  user-select: none;
+}
+
+.mc-cursor {
+  position: fixed;
+  z-index: 80;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  translate: -20% -20%;
+  filter: drop-shadow(2px 2px 0 #0008);
+}
+
+.mc-held-name {
+  margin: 0.55rem 0 0;
+  text-align: center;
+  color: #fff8dc;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.mc-ort-karte-modell {
+  object-fit: contain;
+  background: linear-gradient(#8fd0f5, #eef8fe);
+  image-rendering: pixelated;
+}
+
+.mc-ar-startzeile {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+
+.mc-btn-toggle {
+  opacity: 0.85;
+}
+
+.mc-btn-an {
+  border-color: #7cfc00;
+  color: #b6ff7a;
+}
+
+/* Sichtbare Ablage für das Item "in der Hand" auf Touch-Geräten */
+.mc-hand-ablage {
+  position: fixed;
+  left: 50%;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+  background: #2b2118f2;
+  border: 2px solid #f1c232;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 #0008;
+  pointer-events: none;
+  animation: mc-hand-auf 160ms ease-out;
+}
+
+.mc-hand-slot {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mc-hand-text {
+  color: #ffe9c7;
+  font-size: 0.85rem;
+  text-shadow: 1px 1px 0 #000;
+  max-width: 14rem;
+}
+
+@keyframes mc-hand-auf {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mc-slot {
@@ -302,14 +469,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  width: 92px;
-  height: 128px;
+  width: 96px;
+  height: 72px;
   padding: 0;
   background: none;
   border: 0;
   cursor: pointer;
   overflow: visible;
   pointer-events: auto;
+  z-index: 2 !important;
+}
+
+/* Der Zoom-Massstab muss auf einem INNEREN Element liegen — das
+   Wurzel-Element gehört Mapbox, das dessen transform ständig für die
+   Positionierung überschreibt. */
+.mc-pokestop-inhalt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: scale(calc(var(--mc-marker-skala, 1) * 1.35));
+  transform-origin: 50% 100%;
 }
 
 .mc-pokestop-schwebe {
@@ -323,15 +502,15 @@
 
 .mc-pokestop-buehne {
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 148px;
+  height: 148px;
+  overflow: visible;
 }
 
 .mc-pokestop-buehne canvas {
   display: block;
-  width: 88px;
-  height: 88px;
-  filter: drop-shadow(0 8px 6px #0008);
+  width: 148px;
+  height: 148px;
 }
 
 .mc-pokestop-scheibe {
@@ -447,6 +626,7 @@
 .mc-modell-canvas {
   width: 100%;
   height: 140px;
+  overflow: visible;
 }
 
 .mc-modell-canvas canvas {
@@ -483,6 +663,29 @@
   height: 220px;
 }
 
+.mc-detail-foto {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  margin: 0.75rem 0 0.4rem;
+  border: 3px solid #3a2a14;
+  box-shadow: 4px 4px 0 #1a1208;
+  image-rendering: auto;
+}
+
+.mc-truhe3d-canvas {
+  width: min(100%, 340px);
+  height: 280px;
+  margin: 0 auto;
+}
+
+.mc-truhe3d-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .mc-ort-karte-zu {
   margin-top: 0.55rem;
   background: none;
@@ -495,6 +698,10 @@
 .mc-mapbox-canvas {
   width: 100%;
   height: 100%;
+}
+
+.mapboxgl-marker {
+  overflow: visible !important;
 }
 
 .mc-gl-marker {
@@ -708,13 +915,46 @@
   text-align: center;
 }
 
-.mc-loot-item {
+.mc-loot-stapel {
   position: absolute;
   left: 50%;
-  top: -8px;
+  top: -10px;
   translate: -50% 0;
-  perspective: 240px;
+  display: flex;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.mc-loot-item {
+  position: relative;
   animation: mc-loot-pop 360ms ease-out both;
+}
+
+.mc-block3d {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+
+.mc-block3d canvas {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+
+.mc-block3d-flach {
+  image-rendering: pixelated;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.mc-loot-zahl {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  color: #fff8dc;
+  font-size: 0.7rem;
+  text-shadow: 1px 1px 0 #000;
 }
 
 @keyframes mc-truhe-bob {
@@ -738,24 +978,231 @@
   }
 }
 
-.mc-spieler {
+.mc-spieler,
+.mc-trainer {
   position: relative;
-  width: 36px;
-  height: 40px;
   pointer-events: none;
-  perspective: 200px;
 }
 
-.mc-spieler::after {
-  content: "";
+.mc-trainer {
+  width: 88px;
+  height: 118px;
+  overflow: visible;
+  z-index: 6 !important;
+  pointer-events: none;
+}
+
+.mc-trainer-mass {
+  position: absolute;
+  inset: 0;
+  transform: scale(var(--mc-marker-skala, 1));
+  transform-origin: bottom center;
+  pointer-events: none;
+}
+
+.mc-trainer-schatten {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: 2px;
+  width: 40px;
+  height: 12px;
+  translate: -50% 0;
+  background: #0006;
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.mc-trainer-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 48px;
+  height: 16px;
+  translate: -50% 0;
+  border: 2px solid #2ec8ff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #2ec8ffcc, inset 0 0 4px #7be7ff66;
+  animation: mc-trainer-pulse 1.7s ease-out infinite;
+  z-index: 0;
+}
+
+.mc-trainer-ring-2 {
+  width: 34px;
+  height: 12px;
+  bottom: 3px;
+  animation-delay: 0.65s;
+  opacity: 0.75;
+}
+
+.mc-trainer-schwebe {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  translate: -50% 0;
+  z-index: 1;
+}
+
+.mc-trainer-buehne {
+  display: block;
+  width: 84px;
+  height: 104px;
+  overflow: visible;
+}
+
+.mc-trainer-buehne canvas {
+  display: block;
+  width: 84px;
+  height: 104px;
+}
+
+.mc-wild {
+  position: relative;
+  width: 52px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  overflow: visible;
+  z-index: 2 !important;
+  touch-action: manipulation;
+  pointer-events: auto;
+}
+
+.mc-wild::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+}
+
+.mc-wild-schwebe {
+  display: block;
+  height: 48px;
+  transform-origin: bottom center;
+  animation: mc-wild-bob 1.6s ease-in-out infinite;
+}
+
+.mc-iso-leinwand {
+  display: block;
+  width: 52px;
+  height: 46px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+
+.mc-iso-wuerfel {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 40px;
+  margin: 0 auto;
+}
+
+.mc-iso-top,
+.mc-iso-left,
+.mc-iso-right {
+  position: absolute;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+
+.mc-iso-top {
+  width: 28px;
+  height: 28px;
+  left: 8px;
+  top: -2px;
+  transform: scaleY(0.5) rotate(45deg);
+  filter: brightness(1.12);
+}
+
+.mc-iso-left,
+.mc-iso-right {
+  width: 20px;
+  height: 22px;
+  top: 16px;
+}
+
+.mc-iso-left {
+  left: 2px;
+  transform: skewY(26deg);
+  filter: brightness(0.82);
+}
+
+.mc-iso-right {
+  left: 22px;
+  transform: skewY(-26deg);
+  filter: brightness(0.62);
+}
+
+.mc-wild-schatten {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
   width: 26px;
-  height: 8px;
-  translate: -50% 3px;
+  height: 6px;
+  translate: -50% 0;
+  transform: scale(var(--mc-marker-skala, 1));
+  transform-origin: center;
   background: #0005;
   border-radius: 50%;
+}
+
+.mc-wild-nah {
+  z-index: 2 !important;
+}
+
+.mc-wild-nah .mc-iso-wuerfel,
+.mc-wild-nah .mc-iso-leinwand {
+  filter: drop-shadow(0 0 8px #7cfc00);
+}
+
+.mc-wild-zahl {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 5;
+  margin: 0;
+  padding: 0.25rem 0.45rem;
+  background: #2b2118ee;
+  color: #fff8dc;
+  border: 2px solid #000;
+  font-size: 0.75rem;
+}
+
+.mc-wild-hinweis {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  translate: -50% 0;
+  z-index: 6;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  background: #2b2118ee;
+  color: #fff8dc;
+  border: 2px solid #000;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@keyframes mc-trainer-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes mc-wild-bob {
+  0%,
+  100% {
+    transform: scale(var(--mc-marker-skala, 1)) translateY(0);
+  }
+  50% {
+    transform: scale(var(--mc-marker-skala, 1)) translateY(-7px);
+  }
 }
 
 .mc-ort-btn {
@@ -842,21 +1289,28 @@
   height: 72px;
 }
 
-.mc-rezepte {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.mc-rezept {
+.mc-rezept-karte {
   background: #2b2118;
   border: 3px solid #111;
   padding: 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.mc-rezept-name {
+  margin: 0 0 0.4rem;
+  color: #7cfc00;
+}
+
+.mc-grid3-mini {
+  grid-template-columns: repeat(3, 36px);
+  gap: 3px;
+  margin-bottom: 0.4rem;
+}
+
+.mc-grid3-mini .mc-slot {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
 }
 
 .mc-back {
@@ -888,6 +1342,27 @@
   border-color: #7cfc00;
 }
 
+.mc-werkbank-fenster {
+  background: #c6c6c6;
+  border: 4px solid #111;
+  box-shadow: inset 3px 3px 0 #ececec, inset -3px -3px 0 #555;
+  padding: 10px 8px 8px;
+  margin-bottom: 1rem;
+}
+
+.mc-werkbank-fenster .mc-table {
+  background: #c6a17a;
+  border: 3px solid #5a3a1c;
+  margin-bottom: 10px;
+}
+
+.mc-inv-in-werkbank {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
 .mc-table {
   display: flex;
   align-items: center;
@@ -896,6 +1371,7 @@
   background: #c6a17a;
   border: 4px solid #5a3a1c;
   padding: 0.8rem;
+  touch-action: none;
 }
 
 .mc-grid3 {
@@ -910,6 +1386,8 @@
   height: 56px;
   min-width: 56px;
   padding: 0;
+  touch-action: none;
+  user-select: none;
 }
 
 .mc-out-slot {
@@ -922,12 +1400,117 @@
   color: #3d2b1f;
 }
 
+.mc-ofen-table {
+  gap: 0.55rem;
+}
+
+.mc-ofen-ui {
+  margin-top: 0.35rem;
+}
+
+.mc-ofen-icon {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
+.mc-ofen-feuer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mc-ofen-labels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0.25rem 0 0.6rem;
+  padding: 0 0.4rem;
+  color: #3d2b1f;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 .mc-held {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.6rem auto 0;
+  padding: 0.35rem 0.6rem;
   color: #7cfc00;
+  background: #2b2118;
+  border: 3px solid #111;
+}
+
+.mc-held .mc-slot-block {
+  width: 28px;
+  height: 28px;
+}
+
+.mc-rezepte {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-rezepte li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.mc-rezept {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  padding: 0;
+}
+
+.mc-rezept-aus {
+  opacity: 0.55;
+}
+
+.mc-rezept-wahl {
+  outline: 3px solid #7cfc00;
+}
+
+.mc-rezept-label {
+  font-size: 0.55rem;
+  color: #fff8dc;
+  text-align: center;
 }
 
 .mc-slot-wahl {
   outline: 3px solid #7cfc00;
+}
+
+.mc-slot-wahl-abbau {
+  outline: 3px solid #ec1c24;
+}
+
+.mc-bau-modus {
+  margin: 0.35rem 0 0;
+  padding: 0.25rem 0.45rem;
+  background: #1a140f;
+  border: 2px solid #555;
+  color: #d7c39a;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+}
+
+.mc-bau-modus-setzen {
+  border-color: #7cfc00;
+  color: #7cfc00;
+}
+
+.mc-bau-modus-abbauen {
+  border-color: #ec1c24;
+  color: #ff8a80;
 }
 
 .mc-ar {
@@ -936,12 +1519,25 @@
   background: #1a140f;
 }
 
+.mc-ar-live {
+  background: transparent;
+}
+
 .mc-ar-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mc-platte-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
 }
 
 .mc-ar-canvas {
@@ -953,7 +1549,7 @@
 }
 
 .mc-ar-canvas-aktiv {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .mc-ar-actions {
@@ -1009,6 +1605,41 @@
   text-align: center;
 }
 
+.mc-ar-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.mc-ar-live .mc-ar-overlay {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.mc-ar-live .mc-ar-hud {
+  background: none;
+  padding: 0.4rem;
+}
+
+.mc-ar-live .mc-title {
+  display: none;
+}
+
+/* Modus und Hinweise müssen auch in AR sichtbar bleiben —
+   sie erklären Setzen vs. Abbauen. */
+.mc-ar-live .mc-bau-modus,
+.mc-ar-live .mc-tagline {
+  display: inline-block;
+  margin: 0 auto 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: #2b2118cc;
+  color: #ffe9c7;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-shadow: 0 1px 2px #000;
+}
+
 .mc-ar-hud {
   position: absolute;
   left: 0;
@@ -1016,6 +1647,25 @@
   bottom: calc(4.2rem + env(safe-area-inset-bottom));
   padding: 0.75rem;
   background: #2b2118ee;
+  pointer-events: none;
+}
+
+.mc-ar-hud .mc-hotbar,
+.mc-ar-hud .mc-hotbar-raster,
+.mc-ar-hud .mc-btn,
+.mc-ar-hud .mc-slot {
+  pointer-events: auto;
+}
+
+.mc-ar-hud .mc-hotbar-raster {
+  margin-top: 0.35rem;
+  padding: 5px;
+  border: 3px solid #111;
+  background: #c6c6c6;
+}
+
+.mc-platte-ar {
+  margin-top: 0.55rem;
 }
 
 .mc-ar-model {

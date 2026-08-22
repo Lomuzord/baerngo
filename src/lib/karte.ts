@@ -9,9 +9,9 @@ export type Kartenrahmen = {
 }
 
 export const BERN_KARTE: Kartenrahmen = {
-  lat: 46.9512,
-  lng: 7.4512,
-  zoom: 14,
+  lat: 46.944,
+  lng: 7.455,
+  zoom: 13,
   width: 640,
   height: 480,
 }
@@ -23,6 +23,13 @@ export const SPIELER_KAMERA = {
   minZoom: 14,
   maxZoom: 18,
 } as const
+
+export function markerSkala(zoom: number): number {
+  const roh = 2 ** (zoom - SPIELER_KAMERA.zoom)
+  // Nah herangezoomt dürfen Marker deutlich wachsen, weit draussen
+  // schrumpfen sie nur begrenzt, damit sie erkennbar bleiben.
+  return Math.min(2.4, Math.max(0.4, roh))
+}
 
 export function kameraFuerSpieler(lage: Lage): {
   center: [number, number]

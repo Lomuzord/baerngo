@@ -4,6 +4,7 @@ import {
   BERN_KARTE,
   kameraFuerSpieler,
   liegtAufKarte,
+  markerSkala,
   pixelFuerLage,
   SPIELER_KAMERA,
   weltPositionFuerLage,
@@ -35,5 +36,13 @@ describe("kameraFuerSpieler", () => {
     expect(kamera.zoom).toBe(SPIELER_KAMERA.zoom)
     expect(kamera.zoom).toBeGreaterThan(16)
     expect(kamera.pitch).toBe(SPIELER_KAMERA.pitch)
+  })
+})
+
+describe("markerSkala", () => {
+  it("grows the player sprite when the map zooms in", () => {
+    expect(markerSkala(SPIELER_KAMERA.zoom)).toBeCloseTo(1, 5)
+    expect(markerSkala(SPIELER_KAMERA.maxZoom)).toBeGreaterThan(1)
+    expect(markerSkala(SPIELER_KAMERA.minZoom)).toBeLessThan(1)
   })
 })

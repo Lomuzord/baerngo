@@ -1,17 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
 import { istInReichweite } from "@/lib/reichweite"
 import type { QuizOhneLoesung } from "@/lib/katalog"
-import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
-import { ressourceFuerSehenswuerdigkeit } from "@/lib/sammeln"
-import { truheStatus } from "@/lib/truhe"
+import {
+  beuteFuerSehenswuerdigkeit,
+  formatiereBeute,
+} from "@/lib/sammeln"
 import { InventarLeiste } from "../../InventarLeiste"
 import { TruheKiste } from "../../TruheKiste"
 import { useInventar } from "../../useInventar"
 import { useSpielerOrt } from "../../useSpielerOrt"
 import { useTruhen } from "../../useTruhen"
-import { ModellBuehne } from "../../ModellBuehne"
 import { QuizForm } from "./QuizForm"
 
 export function SehenswuerdigkeitDetail({
@@ -25,19 +27,21 @@ export function SehenswuerdigkeitDetail({
   alias: string[]
   quiz: QuizOhneLoesung
 }) {
+  const router = useRouter()
   const spieler = useSpielerOrt()
-  const { inventar, sammle } = useInventar()
-  const { stand, entsperre, oeffne } = useTruhen()
+  const { slots, sammleBeute } = useInventar()
+  const { statusFuer, restMsFuer, entsperre, oeffne } = useTruhen()
   const reichweite =
     spieler.status === "bereit" ? istInReichweite(spieler.lage, id) : null
-  const ressource = ressourceFuerSehenswuerdigkeit(id)
-  const mesh = meshFuerSehenswuerdigkeit(id)
-  const truhe = truheStatus(stand, id)
+  const beute = beuteFuerSehenswuerdigkeit(id)
+  const foto = fotoFuerSehenswuerdigkeit(id)
+  const truhe = statusFuer(id)
+  const pauseRestMs = restMsFuer(id)
   const vorOrt = spieler.status === "bereit" && Boolean(reichweite?.erlaubt)
 
   return (
     <main className="mc-panel">
-      <InventarLeiste inventar={inventar} />
+      <InventarLeiste slots={slots} />
       <Link href="/" className="mc-back">
         ← Karte
       </Link>
@@ -45,11 +49,20 @@ export function SehenswuerdigkeitDetail({
         <p className="mc-kicker">Ort</p>
         <h1 className="mc-title">{name}</h1>
         {alias.length > 0 ? <p className="mc-tagline">{alias.join(" · ")}</p> : null}
-        {ressource ? (
-          <p className="mc-card-loot">Truhe: {ressource.name}</p>
+        {beute.length > 0 ? (
+          <p className="mc-card-loot">Truhe: {formatiereBeute(beute)}</p>
         ) : null}
       </header>
-      {mesh ? <ModellBuehne mesh={mesh} klasse="mc-modell-detail" /> : null}
+      {foto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="mc-detail-foto"
+          src={foto.src}
+          alt=""
+          width={640}
+          height={360}
+        />
+      ) : null}
 
       {spieler.status === "suche" ? <p>Standort wird gesucht…</p> : null}
       {spieler.status === "verweigert" ? (
@@ -71,15 +84,23 @@ export function SehenswuerdigkeitDetail({
           quiz={quiz}
           lat={spieler.lage.lat}
           lng={spieler.lage.lng}
-          onKorrekt={() => entsperre(id)}
+          onKorrekt={() => {
+            entsperre(id)
+            // Neue Zufallsfrage vom Server holen, damit beim nächsten
+            // Besuch nicht dieselbe Frage festhängt
+            router.refresh()
+          }}
         />
       ) : null}
-      {vorOrt && ressource && truhe !== "verschlossen" ? (
+      {vorOrt && beute.length > 0 && truhe !== "verschlossen" ? (
         <TruheKiste
           status={truhe}
-          ressource={ressource}
+          beute={beute}
+          pauseRestMs={pauseRestMs}
           onOeffnen={() => {
-            if (oeffne(id)) sammle(ressource.id)
+            if (oeffne(id)) {
+              sammleBeute(beute)
+            }
           }}
         />
       ) : null}

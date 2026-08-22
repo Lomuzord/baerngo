@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import type { SehenswuerdigkeitKarte } from "@/lib/katalog"
 import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
 import { meshFuerSehenswuerdigkeit } from "@/lib/modelle"
 import { entfernungText, istInReichweite } from "@/lib/reichweite"
-import { ModellBuehne } from "./ModellBuehne"
+import { modellAlsBild } from "./modellBild"
 import type { SpielerOrt } from "./useSpielerOrt"
 
 export function OrtVorschauPanel({
@@ -23,6 +24,23 @@ export function OrtVorschauPanel({
     spieler.status === "bereit"
       ? istInReichweite(spieler.lage, eintrag.id)
       : null
+  // Das Voxel-Bauwerk frontal als Vorschaubild
+  const [modellBild, setModellBild] = useState<string | null>(null)
+  useEffect(() => {
+    setModellBild(null)
+    if (!mesh) return
+    let aktiv = true
+    void modellAlsBild(mesh, -0.15)
+      .then((bild) => {
+        if (aktiv) setModellBild(bild)
+      })
+      .catch(() => {})
+    return () => {
+      aktiv = false
+    }
+    // mesh folgt aus eintrag.id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eintrag.id])
 
   return (
     <aside className="mc-ort-karte" aria-label={eintrag.name}>
@@ -44,8 +62,15 @@ export function OrtVorschauPanel({
             Zum Quiz
           </Link>
         </div>
-        {mesh ? (
-          <ModellBuehne mesh={mesh} klasse="mc-modell-karte" />
+        {modellBild ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="mc-ort-karte-foto mc-ort-karte-modell"
+            src={modellBild}
+            alt={eintrag.name}
+            width={120}
+            height={120}
+          />
         ) : foto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

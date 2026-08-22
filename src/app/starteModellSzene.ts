@@ -1,3 +1,4 @@
+import { passeKameraAn } from "@/lib/szeneKamera"
 import type { SichtMesh } from "@/lib/modelle"
 
 export async function starteModellSzene(
@@ -6,9 +7,6 @@ export async function starteModellSzene(
   drehung: () => number = () => 0.012,
 ): Promise<() => void> {
   const THREE = await import("three")
-  const { ColladaLoader } = await import(
-    "three/addons/loaders/ColladaLoader.js"
-  )
 
   const breite = el.clientWidth || 88
   const hoehe = el.clientHeight || 88
@@ -19,10 +17,11 @@ export async function starteModellSzene(
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(breite, hoehe)
   renderer.setClearColor(0x000000, 0)
+  renderer.outputColorSpace = THREE.SRGBColorSpace
   el.replaceChildren(renderer.domElement)
 
   const szene = new THREE.Scene()
-  const kamera = new THREE.PerspectiveCamera(35, breite / hoehe, 0.1, 80)
+  const kamera = new THREE.PerspectiveCamera(32, breite / hoehe, 0.05, 80)
   szene.add(new THREE.AmbientLight(0xffffff, 0.9))
   const sonne = new THREE.DirectionalLight(0xfff1d0, 1.15)
   sonne.position.set(4, 8, 6)
@@ -31,30 +30,38 @@ export async function starteModellSzene(
   const wurzel = new THREE.Group()
   szene.add(wurzel)
 
-  const collada = await new ColladaLoader().loadAsync(mesh.src)
-  const figur = collada.scene
-  if (mesh.textur) {
-    const textur = await new THREE.TextureLoader().loadAsync(mesh.textur)
-    textur.colorSpace = THREE.SRGBColorSpace
-    textur.flipY = false
-    figur.traverse((objekt) => {
-      if (objekt instanceof THREE.Mesh) {
-        objekt.material = new THREE.MeshStandardMaterial({
-          map: textur,
-          roughness: 0.85,
-        })
-      }
-    })
+  let figur: InstanceType<typeof THREE.Object3D>
+  if (mesh.format === "gltf") {
+    const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js")
+    const gltf = await new GLTFLoader().loadAsync(mesh.src)
+    if (!gltf) throw new Error("glTF-Modell fehlt")
+    figur = gltf.scene
+  } else {
+    const { ColladaLoader } = await import(
+      "three/addons/loaders/ColladaLoader.js"
+    )
+    const collada = await new ColladaLoader().loadAsync(mesh.src)
+    if (!collada) throw new Error("Collada-Modell fehlt")
+    figur = collada.scene
+    if (mesh.textur) {
+      const textur = await new THREE.TextureLoader().loadAsync(mesh.textur)
+      textur.colorSpace = THREE.SRGBColorSpace
+      textur.flipY = false
+      figur.traverse((objekt) => {
+        if (objekt instanceof THREE.Mesh) {
+          objekt.material = new THREE.MeshStandardMaterial({
+            map: textur,
+            roughness: 0.85,
+          })
+        }
+      })
+    }
   }
   wurzel.add(figur)
-
-  const box = new THREE.Box3().setFromObject(figur)
-  const mitte = box.getCenter(new THREE.Vector3())
-  const groesse = box.getSize(new THREE.Vector3())
-  figur.position.sub(mitte)
-  const radius = Math.max(groesse.x, groesse.y, groesse.z)
-  kamera.position.set(radius * 1.35, radius * 0.55, radius * 1.7)
-  kamera.lookAt(0, 0, 0)
+  passeKameraAn(kamera, wurzel, {
+    padding: 1.55,
+    richtung: { x: 0.7, y: 0.28, z: 1 },
+  })
 
   let rahmen = 0
   const tick = () => {
@@ -66,7 +73,24 @@ export async function starteModellSzene(
 
   return () => {
     cancelAnimationFrame(rahmen)
+    szene.traverse((objekt) => {
+      if (objekt instanceof THREE.Mesh) {
+        objekt.geometry.dispose()
+        const materialien = Array.isArray(objekt.material)
+          ? objekt.material
+          : [objekt.material]
+        for (const material of materialien) {
+          const mitTextur = material as {
+            map?: { dispose(): void } | null
+            dispose(): void
+          }
+          mitTextur.map?.dispose()
+          material.dispose()
+        }
+      }
+    })
     renderer.dispose()
-    el.replaceChildren()
+    renderer.forceContextLoss()
+    if (renderer.domElement.parentNode === el) el.replaceChildren()
   }
 }

@@ -1,4 +1,4 @@
-import { listSehenswuerdigkeiten, type Lage } from "./katalog"
+import { listOrte, type Lage } from "./orte"
 import { ressourceFuerSehenswuerdigkeit } from "./sammeln"
 
 export type SichtModell = {
@@ -11,7 +11,7 @@ export type SichtModell = {
 }
 
 export function listSichtModelle(): SichtModell[] {
-  return listSehenswuerdigkeiten().map((eintrag) => {
+  return listOrte().map((eintrag) => {
     const ressource = ressourceFuerSehenswuerdigkeit(eintrag.id)
     return {
       id: eintrag.id,

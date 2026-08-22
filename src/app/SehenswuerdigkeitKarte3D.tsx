@@ -30,9 +30,7 @@ export function SehenswuerdigkeitKarte3D({
     >
       <article className={`mc-card ${gewaehlt ? "mc-card-aktiv" : ""}`}>
         <OrtPin aktiv={gewaehlt} klasse="mc-ort-pin-karte" />
-        {mesh ? (
-          <ModellBuehne mesh={mesh} klasse="mc-modell-liste" />
-        ) : foto ? (
+        {foto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="mc-card-foto"
@@ -41,6 +39,8 @@ export function SehenswuerdigkeitKarte3D({
             width={220}
             height={140}
           />
+        ) : mesh ? (
+          <ModellBuehne mesh={mesh} klasse="mc-modell-liste" />
         ) : null}
         <h2 className="mc-card-title">{eintrag.name}</h2>
         <p className="mc-card-loot">

@@ -16,6 +16,15 @@ npm test
 npm run dev
 ```
 
+Live on the personal Cloudflare account:
+**https://baerngo.supershadowcube.workers.dev**
+
+```bash
+# MAPBOX_TOKEN is a Worker secret, never committed
+npx wrangler secret put MAPBOX_TOKEN
+npm run deploy
+```
+
 Open http://localhost:3000 on your phone. Allow location (and camera on **Bauen**). Walk to a sight, solve the quiz, then:
 
 - **Werkbank:** drag blocks into the 3×3 grid (2 Gold → Goldblock, Honig+Buch → Honigbrot, Smaragd+Sandstein+Gold → Bernwappen)

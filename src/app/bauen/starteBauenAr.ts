@@ -1,25 +1,66 @@
-import { webXrFeatures, webXrModus } from "@/lib/ar"
-import type { GesetzterBlock } from "@/lib/bauen"
-import { gegenstandById } from "@/lib/gegenstaende"
+import {
+  abbaudauerMs,
+  rissStufeVonAnteil,
+  type AbbauStand,
+} from "@/lib/abbauen"
+import {
+  ndcVonViewport,
+  webXrFeatures,
+  webXrModus,
+  xrViewportFeld,
+} from "@/lib/ar"
+import {
+  aktionFuerHand,
+  blockObenInSpalte,
+  type GesetzterBlock,
+} from "@/lib/bauen"
 import {
   BLOCK_KANTE_METER,
   EBENE_RADIUS_ZELLEN,
-  setzPose,
+  plattenSeiteMeter,
+  poseVonZelle,
+  flaecheVonPunkt,
+  zelleAnFlaeche,
+  zelleVonPose,
   type Ebene,
+  type Zelle,
 } from "@/lib/spielflaeche"
+import {
+  entferneRiss,
+  materialFuerBlock,
+  materialienFuerWuerfel,
+  setzeFallZiel,
+  setzeRiss,
+  tickFall,
+} from "./blockMesh"
 
 export type ArSteuerung = {
   wahl: () => string | null
   kannSetzen: () => boolean
   werkzeug: () => string | null
   bloecke: () => GesetzterBlock[]
-  aufSetzen: (pose: { x: number; y: number; z: number }) => void
+  abbau: () => AbbauStand
+  aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
+}
+
+export type ArMeldungen = {
+  aufPlatte?: () => void
+  aufEnde?: () => void
+}
+
+export type ArOptionen = {
+  // true: Blöcke in Lebensgrösse (1 m) wie im echten Minecraft,
+  // false: Tischplatte mit 16-cm-Blöcken.
+  lebensgross?: boolean
 }
 
 export async function starteBauenAr(
   leinwand: HTMLCanvasElement,
   steuerung: ArSteuerung,
+  overlay: HTMLElement,
+  meldungen: ArMeldungen = {},
+  optionen: ArOptionen = {},
 ): Promise<{ beenden: () => void }> {
   const xr = navigator.xr
   if (!xr) throw new Error("WebXR fehlt")
@@ -30,8 +71,19 @@ export async function starteBauenAr(
   const THREE = await import("three")
   const session = await xr.requestSession(modus, {
     requiredFeatures: webXrFeatures(),
-    optionalFeatures: ["dom-overlay", "plane-detection"],
-    domOverlay: { root: leinwand.parentElement ?? document.body },
+    optionalFeatures: ["dom-overlay", "plane-detection", "light-estimation"],
+    domOverlay: { root: overlay },
+  })
+
+  // "end" sofort abfangen — die Systemgeste kann die Sitzung beenden,
+  // während wir unten noch auf setSession/HitTest warten.
+  let beendet = false
+  let spaeterAbbau: (() => void) | null = null
+  session.addEventListener("end", () => {
+    if (beendet) return
+    beendet = true
+    spaeterAbbau?.()
+    meldungen.aufEnde?.()
   })
 
   const renderer = new THREE.WebGLRenderer({
@@ -39,193 +91,543 @@ export async function starteBauenAr(
     antialias: true,
     alpha: true,
   })
+  renderer.setClearColor(0x000000, 0)
+  renderer.setPixelRatio(1)
+  renderer.setSize(overlay.ownerDocument.documentElement.clientWidth, overlay.ownerDocument.documentElement.clientHeight, false)
   renderer.xr.enabled = true
-  await renderer.xr.setSession(session)
+  renderer.xr.setReferenceSpaceType("local-floor")
+  try {
+    await renderer.xr.setSession(session)
+  } catch (fehler) {
+    renderer.dispose()
+    void session.end().catch(() => {})
+    throw fehler
+  }
+  if (beendet) {
+    renderer.dispose()
+    throw new Error("AR-Sitzung wurde schon beendet")
+  }
+
+  // Echtes Hit-Testing: die Platte landet auf erkannten Flächen
+  // (Boden ODER Tisch) statt auf einer rechnerischen y=0-Ebene.
+  let hitQuelle: XRHitTestSource | null = null
+  try {
+    const viewerSpace = await session.requestReferenceSpace("viewer")
+    const quelle =
+      (await session.requestHitTestSource?.({ space: viewerSpace })) ?? null
+    if (beendet) {
+      try {
+        quelle?.cancel()
+      } catch {
+        // schon weg
+      }
+    } else {
+      hitQuelle = quelle
+    }
+  } catch {
+    hitQuelle = null
+  }
+  if (beendet) {
+    renderer.dispose()
+    throw new Error("AR-Sitzung wurde schon beendet")
+  }
+  let flaechenTreffer: { x: number; y: number; z: number } | null = null
 
   const szene = new THREE.Scene()
   const kamera = new THREE.PerspectiveCamera()
   szene.add(new THREE.AmbientLight(0xffffff, 1))
-  const sonne = new THREE.DirectionalLight(0xffffff, 0.85)
+  const sonne = new THREE.DirectionalLight(0xffffff, 0.9)
   sonne.position.set(1, 3, 2)
   szene.add(sonne)
 
-  const kante = BLOCK_KANTE_METER
+  const lebensgross = Boolean(optionen.lebensgross)
+  const kante = lebensgross ? 1 : BLOCK_KANTE_METER
   let ebene: Ebene | null = null
-  let gitter: THREE.Object3D | null = null
+  let gemeldet = false
 
   const visier = new THREE.Mesh(
-    new THREE.BoxGeometry(kante * 0.98, 0.008, kante * 0.98),
+    new THREE.BoxGeometry(kante * 0.96, kante * 0.96, kante * 0.96),
     new THREE.MeshBasicMaterial({
       color: 0x7cfc00,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.38,
+      depthWrite: false,
     }),
   )
   visier.visible = false
   szene.add(visier)
 
-  const wuerfel = new Map<string, THREE.Mesh>()
+  const ringSkala = kante / BLOCK_KANTE_METER
+  const zielring = new THREE.Mesh(
+    new THREE.RingGeometry(0.055 * ringSkala, 0.075 * ringSkala, 32).rotateX(
+      -Math.PI / 2,
+    ),
+    new THREE.MeshBasicMaterial({
+      color: 0x7cfc00,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    }),
+  )
+  zielring.visible = false
+  szene.add(zielring)
 
-  function sperreEbene(pose: { x: number; y: number; z: number }) {
+  const wuerfel = new Map<string, InstanceType<typeof THREE.Mesh>>()
+  const zeiger = new THREE.Vector2()
+  const boden = new THREE.Plane()
+  const bodenPunkt = new THREE.Vector3()
+  let platteMesh: InstanceType<typeof THREE.Mesh> | null = null
+  let zeigerBild: { x: number; y: number } | null = null
+
+  async function sperreEbene(pose: { x: number; y: number; z: number }) {
     if (ebene) return
-    ebene = { ursprung: { x: pose.x, y: pose.y, z: pose.z } }
-    const seite = (EBENE_RADIUS_ZELLEN * 2 + 1) * kante
-    const platte = new THREE.Mesh(
-      new THREE.PlaneGeometry(seite, seite),
-      new THREE.MeshBasicMaterial({
-        color: 0x3d2b1f,
-        transparent: true,
-        opacity: 0.28,
-        side: THREE.DoubleSide,
-      }),
+    // Lebensgross: Welt auf Fusshöhe verankern — "local-floor" legt
+    // y=0 auf den echten Boden, so steht man selbst im Bauwerk.
+    const y = lebensgross ? Math.min(pose.y, 0.02) : pose.y
+    ebene = { ursprung: { x: pose.x, y, z: pose.z }, kante }
+    zielring.visible = false
+    try {
+      hitQuelle?.cancel()
+    } catch {
+      // Quelle war schon beendet
+    }
+    hitQuelle = null
+    // Gespeicherte Bauten sofort zeichnen — der Dirty-Check hat die
+    // Liste evtl. schon konsumiert, bevor die Ebene existierte.
+    letzteBloeckeListe = null
+    const seite = plattenSeiteMeter(kante)
+    const dicke = kante * 0.125
+    const [gras, holz] = await Promise.all([
+      materialFuerBlock(THREE, "gras"),
+      materialFuerBlock(THREE, "holz"),
+    ])
+    const rahmen = new THREE.Mesh(
+      new THREE.BoxGeometry(seite + kante * 0.5, dicke * 1.5, seite + kante * 0.5),
+      holz,
     )
-    platte.rotation.x = -Math.PI / 2
-    platte.position.set(pose.x, pose.y + 0.001, pose.z)
-    const raster = new THREE.GridHelper(seite, EBENE_RADIUS_ZELLEN * 2 + 1, 0xf1c232, 0x7cfc00)
-    raster.position.set(pose.x, pose.y + 0.002, pose.z)
-    gitter = new THREE.Group()
-    gitter.add(platte)
-    gitter.add(raster)
-    szene.add(gitter)
+    rahmen.position.set(pose.x, y - dicke, pose.z)
+    const platte = new THREE.Mesh(
+      new THREE.BoxGeometry(seite, dicke, seite),
+      gras,
+    )
+    platte.position.set(pose.x, y, pose.z)
+    platteMesh = platte
+    platte.userData.platte = true
+    const pick = new THREE.Mesh(
+      new THREE.PlaneGeometry(seite * 3, seite * 3),
+      new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }),
+    )
+    pick.rotation.x = -Math.PI / 2
+    pick.position.set(pose.x, y + 0.001, pose.z)
+    pick.userData.platte = true
+    szene.add(pick)
+    const raster = new THREE.GridHelper(
+      seite,
+      EBENE_RADIUS_ZELLEN * 2 + 1,
+      0xf1c232,
+      0x7cfc00,
+    )
+    raster.position.set(pose.x, y + dicke * 0.75, pose.z)
+    szene.add(rahmen, platte, raster)
+    if (!gemeldet) {
+      gemeldet = true
+      meldungen.aufPlatte?.()
+    }
   }
 
-  function zeichneBloecke() {
+  let zeichnet = false
+  let zeichneNochmal = false
+  async function zeichneBloecke() {
+    if (!ebene) return
+    if (zeichnet) {
+      zeichneNochmal = true
+      return
+    }
+    zeichnet = true
+    try {
+      do {
+        zeichneNochmal = false
+        await zeichneBloeckeJetzt()
+      } while (zeichneNochmal)
+    } finally {
+      zeichnet = false
+    }
+  }
+
+  async function zeichneBloeckeJetzt() {
+    if (!ebene) return
     const leben = new Set<string>()
     for (const block of steuerung.bloecke()) {
-      if (!block.ar) continue
       leben.add(block.id)
       let mesh = wuerfel.get(block.id)
+      const neu = !mesh
       if (!mesh) {
+        const material = await materialienFuerWuerfel(THREE, block.gegenstandId)
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(kante * 0.98, kante * 0.98, kante * 0.98),
-          new THREE.MeshStandardMaterial({ color: farbeFuer(block.gegenstandId) }),
+          material,
         )
         mesh.userData.blockId = block.id
         szene.add(mesh)
         wuerfel.set(block.id, mesh)
       }
-      mesh.position.set(block.ar.x, block.ar.y + kante / 2, block.ar.z)
+      mesh.userData.zelle = block.zelle
+      const pose = poseVonZelle(block.zelle, ebene)
+      const startY =
+        neu && block.fallStart
+          ? poseVonZelle(block.fallStart, ebene).y + kante / 2
+          : undefined
+      setzeFallZiel(
+        mesh,
+        { x: pose.x, y: pose.y + kante / 2, z: pose.z },
+        startY,
+      )
+      if (xrAbbauId !== block.id) {
+        setzeRiss(THREE, szene, mesh, 0, kante)
+      }
     }
     for (const [id, mesh] of wuerfel) {
       if (leben.has(id)) continue
+      entferneRiss(szene, mesh)
       szene.remove(mesh)
       mesh.geometry.dispose()
       wuerfel.delete(id)
     }
   }
 
-  const viewer = await session.requestReferenceSpace("viewer")
-  const hitQuelle = await session.requestHitTestSource?.({ space: viewer })
   const ray = new THREE.Raycaster()
+  let zielZelle: Zelle | null = null
+  let xrHalten = false
+  let xrAbbauId: string | null = null
+  let xrAbbauStart = 0
+  let xrHatZerstoert = false
+  let xrDruckStart = 0
 
-  function waehle() {
-    zeichneBloecke()
-    const origin = new THREE.Vector3()
-    const richtung = new THREE.Vector3(0, 0, -1)
-    kamera.getWorldPosition(origin)
-    kamera.getWorldDirection(richtung)
-    ray.set(origin, richtung)
-    const blockTreffer = ray.intersectObjects([...wuerfel.values()], false)[0]
-    const wahl = steuerung.wahl()
-    const schlaegt =
-      !wahl || wahl === "pickel" || !steuerung.kannSetzen()
-
-    if (blockTreffer && schlaegt) {
-      const id = blockTreffer.object.userData.blockId as string | undefined
-      if (id) steuerung.aufSchlag(id)
-      zeichneBloecke()
-      return
-    }
-    if (!steuerung.kannSetzen() || !visier.visible || !ebene) return
-    const bestehende = steuerung
-      .bloecke()
-      .map((block) => block.ar)
-      .filter((pose): pose is { x: number; y: number; z: number } => Boolean(pose))
-    const zelle = setzPose(
-      { x: visier.position.x, y: visier.position.y, z: visier.position.z },
-      ebene,
-      bestehende,
-    )
-    if (!zelle) return
-    steuerung.aufSetzen(zelle)
-    zeichneBloecke()
+  function bestehendeZellen(): Zelle[] {
+    return steuerung.bloecke().map((block) => block.zelle)
   }
 
-  session.addEventListener("select", waehle)
+  function xrSicht() {
+    const xrCam = renderer.xr.getCamera()
+    xrCam.updateMatrixWorld(true)
+    const teil =
+      "cameras" in xrCam && Array.isArray(xrCam.cameras) && xrCam.cameras[0]
+        ? xrCam.cameras[0]
+        : xrCam
+    teil.updateMatrixWorld(true)
+    return teil
+  }
 
-  renderer.setAnimationLoop((_zeit, frame) => {
-    if (!frame || !hitQuelle) {
-      renderer.render(szene, kamera)
-      return
+  function trefferBeiBildschirm(clientX: number, clientY: number) {
+    const leinwand = renderer.domElement
+    const box = leinwand.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return undefined
+    const sicht = xrSicht()
+    // Der XR-Viewport ist in Framebuffer-Pixeln — die Canvasgrösse ist
+    // CSS-Pixel. Beide Räume mischen lenkt jeden Tipp weit daneben.
+    const basisEbene = session.renderState.baseLayer
+    const puffer = basisEbene
+      ? {
+          width: basisEbene.framebufferWidth,
+          height: basisEbene.framebufferHeight,
+        }
+      : { width: leinwand.width, height: leinwand.height }
+    const ndc = ndcVonViewport(
+      clientX,
+      clientY,
+      box,
+      puffer,
+      xrViewportFeld(
+        "viewport" in sicht
+          ? (sicht.viewport as {
+              x: number
+              y: number
+              z?: number
+              w?: number
+              width?: number
+              height?: number
+            })
+          : undefined,
+      ),
+    )
+    zeiger.x = ndc.x
+    zeiger.y = ndc.y
+    ray.setFromCamera(zeiger, sicht)
+    const treffer = ray
+      .intersectObjects(szene.children, false)
+      .filter((eintrag) => {
+        const data = eintrag.object.userData as {
+          blockId?: string
+          platte?: boolean
+        }
+        return Boolean(data.blockId || data.platte)
+      })
+    const hit = treffer[0]
+    if (hit) {
+      return {
+        point: hit.point,
+        blockId: hit.object.userData.blockId as string | undefined,
+        zelle: hit.object.userData.zelle as Zelle | undefined,
+        zentrum:
+          "position" in hit.object
+            ? (hit.object.position as { x: number; y: number; z: number })
+            : undefined,
+      }
     }
-    const space = renderer.xr.getReferenceSpace()
-    if (!space) {
-      renderer.render(szene, kamera)
-      return
+    const y = ebene?.ursprung.y ?? 0
+    boden.set(new THREE.Vector3(0, 1, 0), -y)
+    if (!ray.ray.intersectPlane(boden, bodenPunkt)) return undefined
+    return {
+      point: { x: bodenPunkt.x, y: bodenPunkt.y, z: bodenPunkt.z },
+      blockId: undefined as string | undefined,
+      zelle: undefined as Zelle | undefined,
+      zentrum: undefined as { x: number; y: number; z: number } | undefined,
     }
-    const hits = frame.getHitTestResults(hitQuelle)
-    if (hits[0]) {
-      const pose = hits[0].getPose(space)
+  }
+
+  function zelleFuerTreffer(hit: {
+    point: { x: number; y: number; z: number }
+    zelle?: Zelle
+    zentrum?: { x: number; y: number; z: number }
+  }) {
+    if (!ebene) return null
+    if (hit.zelle && hit.zentrum) {
+      return zelleAnFlaeche(
+        {
+          zelle: hit.zelle,
+          normale: flaecheVonPunkt(hit.zentrum, hit.point, kante),
+        },
+        ebene,
+        bestehendeZellen(),
+      )
+    }
+    return zelleAnFlaeche(
+      { punkt: { x: hit.point.x, y: hit.point.y, z: hit.point.z } },
+      ebene,
+      bestehendeZellen(),
+    )
+  }
+
+  function xrBlockId() {
+    if (!zeigerBild) return undefined
+    const hit = trefferBeiBildschirm(zeigerBild.x, zeigerBild.y)
+    if (!hit) return undefined
+    if (hit.blockId) return hit.blockId
+    if (!ebene) return undefined
+    const spalte = zelleVonPose(hit.point, ebene)
+    return blockObenInSpalte(steuerung.bloecke(), spalte)?.id
+  }
+
+  function brichXrAbbau() {
+    if (xrAbbauId) {
+      const mesh = wuerfel.get(xrAbbauId)
+      if (mesh) setzeRiss(THREE, szene, mesh, 0, kante)
+    }
+    xrAbbauId = null
+  }
+
+  function beginneHalten() {
+    xrHalten = true
+    xrHatZerstoert = false
+    xrDruckStart = performance.now()
+    const id = xrBlockId()
+    if (id) {
+      xrAbbauId = id
+      xrAbbauStart = xrDruckStart
+    } else brichXrAbbau()
+  }
+
+  function setzeZeiger(event: Event) {
+    if (!(event instanceof PointerEvent)) return
+    zeigerBild = { x: event.clientX, y: event.clientY }
+    const hit = trefferBeiBildschirm(event.clientX, event.clientY)
+    if (!ebene) {
+      const ziel =
+        flaechenTreffer ??
+        (hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null)
+      if (ziel) void sperreEbene(ziel)
+    }
+    zielZelle = hit && ebene ? zelleFuerTreffer(hit) : null
+  }
+
+  function endeHalten() {
+    if (
+      !xrHatZerstoert &&
+      ebeneBeimDruck &&
+      aktionFuerHand(steuerung.wahl()) === "setzen" &&
+      steuerung.kannSetzen() &&
+      zielZelle
+    ) {
+      steuerung.aufSetzen(zielZelle)
+      void zeichneBloecke()
+    }
+    xrHalten = false
+    zeigerBild = null
+    visier.visible = false
+    brichXrAbbau()
+  }
+
+  function istHud(event: Event) {
+    const ziel = event.target
+    return (
+      ziel instanceof HTMLElement &&
+      Boolean(
+        ziel.closest("button, a, input, label, .mc-hotbar, .mc-hotbar-raster"),
+      )
+    )
+  }
+
+  let ebeneBeimDruck = false
+
+  function aufOverlayDown(event: Event) {
+    if (istHud(event)) return
+    // Die Platte wird mit dem ersten Tipp gelegt — derselbe Tipp darf
+    // nicht auch schon einen Block setzen.
+    ebeneBeimDruck = Boolean(ebene)
+    setzeZeiger(event)
+    beginneHalten()
+  }
+
+  function aufOverlayMove(event: Event) {
+    if (!xrHalten || istHud(event)) return
+    setzeZeiger(event)
+  }
+
+  function aufOverlayUp(event: Event) {
+    if (istHud(event)) return
+    setzeZeiger(event)
+    endeHalten()
+  }
+
+  overlay.addEventListener("pointerdown", aufOverlayDown)
+  overlay.addEventListener("pointermove", aufOverlayMove)
+  overlay.addEventListener("pointerup", aufOverlayUp)
+  overlay.addEventListener("pointercancel", aufOverlayUp)
+
+  let letzteBloeckeListe: GesetzterBlock[] | null = null
+  let zuletzt = performance.now()
+  renderer.setAnimationLoop((zeit, frame) => {
+    const dt = Math.min(0.05, (zeit - zuletzt) / 1000)
+    zuletzt = zeit
+    if (!ebene && frame && hitQuelle) {
+      const refSpace = renderer.xr.getReferenceSpace()
+      const ergebnisse = frame.getHitTestResults(hitQuelle)
+      const pose = refSpace ? ergebnisse[0]?.getPose(refSpace) : undefined
       if (pose) {
-        const p = pose.transform.position
-        sperreEbene({ x: p.x, y: p.y, z: p.z })
-        visier.visible = true
-        if (ebene) {
-          const zelle = setzPose(
-            { x: p.x, y: p.y, z: p.z },
-            ebene,
-            steuerung
-              .bloecke()
-              .map((block) => block.ar)
-              .filter((pose): pose is { x: number; y: number; z: number } =>
-                Boolean(pose),
-              ),
-          )
-          if (zelle) {
-            visier.position.set(zelle.x, zelle.y + 0.004, zelle.z)
-          } else {
-            visier.position.set(p.x, p.y + 0.004, p.z)
-          }
+        flaechenTreffer = {
+          x: pose.transform.position.x,
+          y: pose.transform.position.y,
+          z: pose.transform.position.z,
+        }
+        zielring.position.set(
+          flaechenTreffer.x,
+          flaechenTreffer.y + 0.004,
+          flaechenTreffer.z,
+        )
+        zielring.visible = true
+      } else {
+        flaechenTreffer = null
+        zielring.visible = false
+      }
+    }
+    for (const mesh of wuerfel.values()) tickFall(mesh, dt)
+    if (xrHalten && xrAbbauId) {
+      const block = steuerung
+        .bloecke()
+        .find((eintrag) => eintrag.id === xrAbbauId)
+      const mesh = wuerfel.get(xrAbbauId)
+      if (block && mesh) {
+        const dauer = abbaudauerMs(block.gegenstandId, steuerung.werkzeug())
+        const anteil = (zeit - xrAbbauStart) / dauer
+        setzeRiss(THREE, szene, mesh, rissStufeVonAnteil(anteil), kante)
+        if (anteil >= 1) {
+          const id = xrAbbauId
+          xrHatZerstoert = true
+          brichXrAbbau()
+          steuerung.aufSchlag(id)
+          void zeichneBloecke()
         }
       }
-    } else {
-      visier.visible = false
     }
-    zeichneBloecke()
+    const visierMat = visier.material as InstanceType<
+      typeof THREE.MeshBasicMaterial
+    >
+    if (zeigerBild) {
+      const hit = trefferBeiBildschirm(zeigerBild.x, zeigerBild.y)
+      if (!ebene) {
+        const ziel =
+          flaechenTreffer ??
+          (hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null)
+        if (ziel) void sperreEbene(ziel)
+      }
+      const aktion = aktionFuerHand(steuerung.wahl())
+      if (ebene && hit) {
+        const blockId = hit.blockId
+        if (aktion === "abbauen") {
+          const oben = blockId
+            ? steuerung.bloecke().find((block) => block.id === blockId)
+            : blockObenInSpalte(
+                steuerung.bloecke(),
+                zelleVonPose(hit.point, ebene),
+              )
+          if (oben) {
+            const rast = poseVonZelle(oben.zelle, ebene)
+            visier.position.set(rast.x, rast.y + kante / 2, rast.z)
+            visier.visible = true
+            visierMat.color.setHex(0xec1c24)
+            zielZelle = oben.zelle
+          } else {
+            visier.visible = false
+            zielZelle = null
+          }
+        } else if (aktion === "setzen" && steuerung.kannSetzen()) {
+          zielZelle = zelleFuerTreffer(hit)
+          if (zielZelle) {
+            const rast = poseVonZelle(zielZelle, ebene)
+            visier.position.set(rast.x, rast.y + kante / 2, rast.z)
+            visier.visible = true
+            visierMat.color.setHex(0x7cfc00)
+          } else visier.visible = false
+        } else {
+          visier.visible = false
+          zielZelle = zelleFuerTreffer(hit)
+        }
+      } else {
+        visier.visible = false
+        zielZelle = null
+      }
+    } else visier.visible = false
+    // Nur neu aufbauen, wenn sich die Blockliste wirklich geändert hat —
+    // die Referenz wechselt bei jedem React-Commit, sonst nie.
+    const aktuelle = steuerung.bloecke()
+    if (aktuelle !== letzteBloeckeListe) {
+      letzteBloeckeListe = aktuelle
+      void zeichneBloecke()
+    }
     renderer.render(szene, kamera)
   })
 
-  function beenden() {
-    session.removeEventListener("select", waehle)
+  spaeterAbbau = () => {
+    overlay.removeEventListener("pointerdown", aufOverlayDown)
+    overlay.removeEventListener("pointermove", aufOverlayMove)
+    overlay.removeEventListener("pointerup", aufOverlayUp)
+    overlay.removeEventListener("pointercancel", aufOverlayUp)
     renderer.setAnimationLoop(null)
-    void session.end()
+    try {
+      hitQuelle?.cancel()
+    } catch {
+      // Quelle war schon beendet
+    }
     renderer.dispose()
   }
-  session.addEventListener("end", () => {
-    renderer.setAnimationLoop(null)
-  })
+
+  function beenden() {
+    if (beendet) return
+    beendet = true
+    spaeterAbbau?.()
+    void session.end().catch(() => {})
+    meldungen.aufEnde?.()
+  }
 
   return { beenden }
-}
-
-function farbeFuer(id: string): number {
-  const name = gegenstandById(id)?.id ?? id
-  const tabelle: Record<string, number> = {
-    gold: 0xf1c232,
-    sandstein: 0xc2a06a,
-    honig: 0xe09b1b,
-    smaragd: 0x2ecc71,
-    stein: 0x888888,
-    holz: 0x8b5a2b,
-    eisen: 0xc6c6c6,
-    erde: 0x6b4224,
-    gras: 0x5b8c3a,
-    kies: 0x887e6c,
-    ziegel: 0x964637,
-    goldblock: 0xffd700,
-    pickel: 0xbbbbbb,
-    schwert: 0xdddddd,
-    buch: 0x5a3a1c,
-  }
-  return tabelle[name] ?? 0x8b5a2b
 }

@@ -10,19 +10,33 @@ describe("submitAntwort", () => {
 
     const richtig = await submitAntwort(
       "zytglogge",
-      "Astronomische Uhr und Glockenspiel",
+      0,
+      "Kaspar Brunner",
       lat,
       lng,
     )
     const falsch = await submitAntwort(
       "zytglogge",
-      "Der höchste Turm der Schweiz",
+      0,
+      "Niklaus Manuel",
       lat,
       lng,
     )
 
     expect(richtig).toEqual({ art: "bewertet", korrekt: true })
     expect(falsch).toEqual({ art: "bewertet", korrekt: false })
+  })
+
+  it("scores the second Zytglogge question independently", async () => {
+    const { lat, lng } = sehenswuerdigkeitById("zytglogge")!.lage
+    const richtig = await submitAntwort(
+      "zytglogge",
+      1,
+      "Das westliche Stadttor Berns",
+      lat,
+      lng,
+    )
+    expect(richtig).toEqual({ art: "bewertet", korrekt: true })
   })
 
   it("scores a matching and a non-matching GIBB answer through the play entry point", async () => {
@@ -32,12 +46,14 @@ describe("submitAntwort", () => {
 
     const richtig = await submitAntwort(
       "gibb",
+      0,
       "Die gewerblich-industrielle Berufsfachschule Bern",
       lat,
       lng,
     )
     const falsch = await submitAntwort(
       "gibb",
+      0,
       "Das Bundeshaus der Bundesversammlung",
       lat,
       lng,

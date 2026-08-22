@@ -1,34 +1,76 @@
 import { describe, expect, it } from "vitest"
 import {
   PICKEL_HALTBARKEIT,
+  abbauDrop,
+  abbaudauerMs,
+  anzeigeHaltbarkeit,
   haltbarkeitNachZugang,
+  istPickel,
   nutzePickel,
-  schlageBlock,
-  trefferProBlock,
+  pickelHaltbarkeitFuer,
+  rissStufeVonAnteil,
 } from "./abbauen"
 
-describe("trefferProBlock", () => {
-  it("lets a pickaxe break a block in one hit and the hand in four", () => {
-    expect(trefferProBlock("pickel")).toBe(1)
-    expect(trefferProBlock(null)).toBe(4)
-    expect(trefferProBlock("gold")).toBe(4)
+describe("abbaudauerMs", () => {
+  it("breaks faster with a pickaxe and slower by hand, harder blocks take longer", () => {
+    expect(abbaudauerMs("stein", "pickel")).toBeLessThan(
+      abbaudauerMs("stein", null),
+    )
+    expect(abbaudauerMs("stamm", "axt")).toBeLessThan(abbaudauerMs("stamm", "pickel"))
+    expect(abbaudauerMs("stein", "pickel")).toBeLessThan(
+      abbaudauerMs("stein", "axt"),
+    )
+    expect(abbaudauerMs("eisen", null)).toBeGreaterThan(abbaudauerMs("kies", null))
   })
 })
 
-describe("schlageBlock", () => {
-  it("destroys immediately with a pickaxe and only after four hand hits", () => {
-    const mitPickel = schlageBlock({}, "a", "pickel")
-    expect(mitPickel.zerstoert).toBe(true)
-    expect(mitPickel.stand.a).toBeUndefined()
+describe("Werkzeugstufen", () => {
+  it("gets faster with each pickaxe tier like Minecraft", () => {
+    expect(abbaudauerMs("stein", "holzpickel")).toBeLessThan(
+      abbaudauerMs("stein", null),
+    )
+    expect(abbaudauerMs("stein", "pickel")).toBeLessThan(
+      abbaudauerMs("stein", "holzpickel"),
+    )
+    expect(abbaudauerMs("stein", "eisenpickel")).toBeLessThan(
+      abbaudauerMs("stein", "pickel"),
+    )
+    expect(abbaudauerMs("stein", "diamantpickel")).toBeLessThan(
+      abbaudauerMs("stein", "eisenpickel"),
+    )
+  })
 
-    let stand = {}
-    for (let i = 1; i <= 3; i++) {
-      const schlag = schlageBlock(stand, "a", null)
-      expect(schlag.zerstoert).toBe(false)
-      stand = schlag.stand
-    }
-    const letzter = schlageBlock(stand, "a", null)
-    expect(letzter.zerstoert).toBe(true)
+  it("gives higher tiers more durability", () => {
+    expect(pickelHaltbarkeitFuer("holzpickel")).toBeLessThan(
+      pickelHaltbarkeitFuer("pickel"),
+    )
+    expect(pickelHaltbarkeitFuer("pickel")).toBe(PICKEL_HALTBARKEIT)
+    expect(pickelHaltbarkeitFuer("eisenpickel")).toBeLessThan(
+      pickelHaltbarkeitFuer("diamantpickel"),
+    )
+    expect(istPickel("diamantpickel")).toBe(true)
+    expect(istPickel("axt")).toBe(false)
+  })
+
+  it("wears each tier down under its own id", () => {
+    const nutzung = nutzePickel({ eisenpickel: 1 }, 1, "eisenpickel")
+    expect(nutzung.zerbrochen).toBe(true)
+    expect(nutzung.inventar.eisenpickel).toBeUndefined()
+  })
+
+  it("drops cobblestone when stone is mined, like real Minecraft", () => {
+    expect(abbauDrop("stein")).toBe("bruchstein")
+    expect(abbauDrop("gras")).toBe("gras")
+    expect(abbauDrop("diamanterz")).toBe("diamanterz")
+  })
+})
+
+describe("rissStufeVonAnteil", () => {
+  it("grows cracks while a hold is in progress", () => {
+    expect(rissStufeVonAnteil(0)).toBe(0)
+    expect(rissStufeVonAnteil(0.2)).toBe(1)
+    expect(rissStufeVonAnteil(0.5)).toBe(2)
+    expect(rissStufeVonAnteil(0.9)).toBe(3)
   })
 })
 
@@ -50,5 +92,8 @@ describe("nutzePickel", () => {
     expect(haltbarkeitNachZugang(0, 0, 1)).toBe(PICKEL_HALTBARKEIT)
     expect(haltbarkeitNachZugang(12, 1, 1)).toBe(12)
     expect(haltbarkeitNachZugang(8, 1, 0)).toBe(0)
+    expect(anzeigeHaltbarkeit(0, 1)).toBe(PICKEL_HALTBARKEIT)
+    expect(anzeigeHaltbarkeit(9, 1)).toBe(9)
+    expect(anzeigeHaltbarkeit(0, 0)).toBe(0)
   })
 })

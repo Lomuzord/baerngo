@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Press_Start_2P, VT323 } from "next/font/google"
+import { HaptikLauscher } from "./HaptikLauscher"
 import { SpielTabBar } from "./SpielTabBar"
 import "./globals.css"
 
@@ -48,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={`${pixel.variable} ${vt.variable} mc-body`}>
+        <HaptikLauscher />
         {children}
         <SpielTabBar />
       </body>

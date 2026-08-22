@@ -1,7 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { neuerBlock, type GesetzterBlock } from "@/lib/bauen"
+import {
+  nimmBlock,
+  parseBloecke,
+  setzeBlock,
+  type GesetzterBlock,
+} from "@/lib/bauen"
+import type { Zelle } from "@/lib/spielflaeche"
 
 const SPEICHER = "baerngo-bauen"
 
@@ -12,33 +18,20 @@ export function useBauen() {
     setBloecke(leseBloecke())
   }, [])
 
-  const setze = useCallback(
-    (
-      gegenstandId: string,
-      lat: number,
-      lng: number,
-      ar?: { x: number; y: number; z: number },
-    ) => {
-      const block = neuerBlock(gegenstandId, lat, lng, ar)
-      setBloecke((bisher) => {
-        const danach = [...bisher, block]
-        schreibeBloecke(danach)
-        return danach
-      })
-      return block
-    },
-    [],
-  )
-
-  const nimmWeg = useCallback((blockId: string) => {
-    let entfernt: GesetzterBlock | undefined
+  const setze = useCallback((gegenstandId: string, zelle: Zelle) => {
     setBloecke((bisher) => {
-      entfernt = bisher.find((block) => block.id === blockId)
-      const danach = bisher.filter((block) => block.id !== blockId)
+      const danach = setzeBlock(bisher, gegenstandId, zelle)
       schreibeBloecke(danach)
       return danach
     })
-    return entfernt
+  }, [])
+
+  const nimmWeg = useCallback((blockId: string) => {
+    setBloecke((bisher) => {
+      const danach = nimmBlock(bisher, blockId)
+      schreibeBloecke(danach)
+      return danach
+    })
   }, [])
 
   return { bloecke, setze, nimmWeg }
@@ -48,7 +41,7 @@ function leseBloecke(): GesetzterBlock[] {
   if (typeof window === "undefined") return []
   try {
     const roh = window.localStorage.getItem(SPEICHER)
-    return roh ? (JSON.parse(roh) as GesetzterBlock[]) : []
+    return parseBloecke(roh ? JSON.parse(roh) : [])
   } catch {
     return []
   }
