@@ -204,6 +204,66 @@
   }
 }
 
+/* Tageszeit und Wetter über der Karte — reine Deko, fasst nichts an */
+.mc-himmel-tint,
+.mc-himmel-regen,
+.mc-himmel-schnee {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.mc-himmel-tint {
+  mix-blend-mode: multiply;
+  transition: opacity 2s ease;
+}
+
+.mc-himmel-regen {
+  background-image:
+    repeating-linear-gradient(
+      105deg,
+      transparent 0 10px,
+      rgba(190, 220, 250, 0.35) 10px 11px,
+      transparent 11px 26px
+    ),
+    repeating-linear-gradient(
+      100deg,
+      transparent 0 17px,
+      rgba(160, 200, 245, 0.25) 17px 18px,
+      transparent 18px 41px
+    );
+  animation: mc-regen-fall 0.7s linear infinite;
+}
+
+@keyframes mc-regen-fall {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: -18px 70px, -12px 52px;
+  }
+}
+
+.mc-himmel-schnee {
+  background-image:
+    radial-gradient(circle 2px, rgba(255, 255, 255, 0.85) 100%, transparent 0),
+    radial-gradient(circle 1.5px, rgba(255, 255, 255, 0.6) 100%, transparent 0);
+  background-size:
+    56px 56px,
+    38px 38px;
+  animation: mc-schnee-fall 6s linear infinite;
+}
+
+@keyframes mc-schnee-fall {
+  from {
+    background-position: 0 0, 12px 8px;
+  }
+  to {
+    background-position: 18px 56px, -8px 38px;
+  }
+}
+
 .mc-varianten {
   display: flex;
   gap: 6px;

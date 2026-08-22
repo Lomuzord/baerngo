@@ -203,6 +203,17 @@ export function legeBeuteInInventar(
   return danach
 }
 
+// Bonus-Drops wie im echten Minecraft: Laub lässt manchmal einen
+// Setzling fallen, Gras manchmal Samen.
+export function bonusDrop(
+  gegenstandId: string,
+  zufall: () => number = Math.random,
+): string | null {
+  if (gegenstandId === "laub" && zufall() < 0.2) return "setzling"
+  if (gegenstandId === "gras" && zufall() < 0.15) return "samen"
+  return null
+}
+
 export function parseInventar(roh: unknown): Record<string, number> {
   if (!roh || typeof roh !== "object" || Array.isArray(roh)) return {}
   const stand: Record<string, number> = {}

@@ -5,6 +5,7 @@ import {
   abbauDrop,
   anzeigeHaltbarkeit,
   istPickel,
+  laesstBeuteFallen,
   nutzePickel,
   type AbbauStand,
 } from "@/lib/abbauen"
@@ -125,6 +126,18 @@ export function BauenPlatte() {
       if (!kannBlockSetzen(bloecke, zelle)) return
       const genommen = nimmVonIndex(slots, wahlIndex, 1)
       if (!genommen.ok) return
+      if (wahl === "wassereimer") {
+        // Der Eimer giesst Wasser aus und ist danach wieder leer
+        setze("wasser", zelle)
+        setzeSlots(
+          legeBeuteInSlots(genommen.slots, [
+            { gegenstandId: "eimer", anzahl: 1 },
+          ]),
+        )
+        spieleHaptik("setzen")
+        setHinweis("Wasser platziert — der Eimer ist wieder leer.")
+        return
+      }
       setze(wahl, zelle)
       setzeSlots(genommen.slots)
       if (!genommen.slots[wahlIndex]) setWahlIndex(null)
@@ -139,9 +152,11 @@ export function BauenPlatte() {
     const weg = bloecke.find((block) => block.id === blockId)
     if (!weg) return false
     nimmWeg(blockId)
-    let nextSlots = legeBeuteInSlots(slots, [
-      { gegenstandId: abbauDrop(weg.gegenstandId), anzahl: 1 },
-    ])
+    let nextSlots = laesstBeuteFallen(weg.gegenstandId)
+      ? legeBeuteInSlots(slots, [
+          { gegenstandId: abbauDrop(weg.gegenstandId), anzahl: 1 },
+        ])
+      : slots
     if (werkzeug && istPickel(werkzeug)) {
       const max = maximumFuer(werkzeug)
       const bisher = haltbarkeitFuer(werkzeug)

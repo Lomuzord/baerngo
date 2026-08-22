@@ -22,9 +22,16 @@ import {
 } from "@/lib/reichweite"
 import { umweltAusMerkmalen, type Umwelt } from "@/lib/umwelt"
 import { spieleHaptik } from "@/lib/haptik"
+import {
+  legeBeuteInSlots,
+  nimmAnzahl,
+  zaehleSlots,
+} from "@/lib/inventar"
+import { bonusDrop } from "@/lib/sammeln"
 import { sammelRadius, type WildBlock } from "@/lib/wildspawn"
 import { maleIsoWuerfel } from "./maleIsoWuerfel"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
+import { WetterHimmel } from "./WetterHimmel"
 import { useInventar } from "./useInventar"
 import { useSpielerOrt } from "./useSpielerOrt"
 import { useWildspawn } from "./useWildspawn"
@@ -63,12 +70,18 @@ export function BernKarteGl({
   const spieler = useSpielerOrt()
   const spielerRef = useRef(spieler)
   spielerRef.current = spieler
-  const { sammle } = useInventar()
+  const { sammle, slots, setzeSlots } = useInventar()
+  const slotsRef = useRef(slots)
+  slotsRef.current = slots
+  const setzeSlotsRef = useRef(setzeSlots)
+  setzeSlotsRef.current = setzeSlots
   const umweltAn = useCallback((lage: Lage): Umwelt => {
     const map = karte.current
     if (!map || !map.isStyleLoaded()) return "unbekannt"
     return umweltAusMerkmalen(merkmaleAn(map, lage))
   }, [])
+  const umweltAnRef = useRef(umweltAn)
+  umweltAnRef.current = umweltAn
   const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit)
   const nimmRef = useRef(nimm)
   nimmRef.current = nimm
@@ -160,7 +173,33 @@ export function BernKarteGl({
             }
           }
         }
-        map.on("click", () => {
+        map.on("click", (event) => {
+          // Mit leerem Eimer auf die Aare tippen = Wasser schöpfen
+          const jetzt = spielerRef.current
+          if (jetzt.status === "bereit") {
+            const klick = {
+              lat: event.lngLat.lat,
+              lng: event.lngLat.lng,
+            }
+            if (
+              distanzMeter(jetzt.lage, klick) <=
+                sammelRadius(jetzt.genauigkeit) &&
+              (zaehleSlots(slotsRef.current).eimer ?? 0) > 0 &&
+              umweltAnRef.current(klick) === "wasser"
+            ) {
+              const ohneEimer = nimmAnzahl(slotsRef.current, "eimer", 1)
+              if (ohneEimer) {
+                setzeSlotsRef.current(
+                  legeBeuteInSlots(ohneEimer, [
+                    { gegenstandId: "wassereimer", anzahl: 1 },
+                  ]),
+                )
+                spieleHaptik("sammeln")
+                setHinweis("Wasser aus der Aare geschöpft!")
+                return
+              }
+            }
+          }
           onWaehleRef.current(null)
         })
         if (spielerRef.current.status === "bereit") {
@@ -290,7 +329,14 @@ export function BernKarteGl({
             sammleRef.current(weg.gegenstandId)
             spieleHaptik("sammeln")
             const name = gegenstandById(weg.gegenstandId)?.name ?? weg.gegenstandId
-            setHinweis(`+1 ${name}`)
+            const bonus = bonusDrop(weg.gegenstandId)
+            if (bonus) {
+              sammleRef.current(bonus)
+              const bonusName = gegenstandById(bonus)?.name ?? bonus
+              setHinweis(`+1 ${name} · +1 ${bonusName}!`)
+            } else {
+              setHinweis(`+1 ${name}`)
+            }
           }),
           anchor: "bottom",
         })
@@ -348,6 +394,7 @@ export function BernKarteGl({
   return (
     <div className="mc-map3d" data-testid="mapbox-gl-map">
       <div ref={kasten} className="mc-mapbox-canvas" />
+      <WetterHimmel />
       <button
         type="button"
         className="mc-ort-btn"

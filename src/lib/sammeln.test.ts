@@ -6,8 +6,7 @@ import {
   formatiereBeute,
   legeBeuteInInventar,
   parseInventar,
-  ressourceFuerSehenswuerdigkeit,
-} from "./sammeln"
+  ressourceFuerSehenswuerdigkeit, bonusDrop } from "./sammeln"
 
 describe("ressourceFuerSehenswuerdigkeit", () => {
   it("gives Gold at the Zytglogge and a book at the GIBB", () => {
@@ -84,5 +83,15 @@ describe("parseInventar", () => {
     })
     expect(parseInventar({ gold: "2", honig: -1 })).toEqual({ gold: 2 })
     expect(parseInventar(null)).toEqual({})
+  })
+})
+
+describe("bonusDrop", () => {
+  it("drops setzling from laub and samen from gras, chance-gated", () => {
+    expect(bonusDrop("laub", () => 0.1)).toBe("setzling")
+    expect(bonusDrop("laub", () => 0.5)).toBeNull()
+    expect(bonusDrop("gras", () => 0.1)).toBe("samen")
+    expect(bonusDrop("gras", () => 0.5)).toBeNull()
+    expect(bonusDrop("holz", () => 0)).toBeNull()
   })
 })
