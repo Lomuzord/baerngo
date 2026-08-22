@@ -336,18 +336,24 @@ function planer() {
   const ac = kontext()
   if (ac && tonAn() && !document.hidden) {
     if (naechsteZeit < ac.currentTime) naechsteZeit = ac.currentTime + 0.06
-    while (naechsteZeit < ac.currentTime + 0.35) {
+    while (naechsteZeit < ac.currentTime + 0.55) {
       planeSchritt(ac, naechsteZeit)
       naechsteZeit += SECHZEHNTEL
       schritt += 1
     }
   }
-  planerTimer = window.setTimeout(planer, 110)
+  planerTimer = window.setTimeout(planer, 140)
 }
 
 export function starteMusik() {
-  if (laeuft || typeof window === "undefined" || !tonAn()) return
-  if (!kontext()) return
+  if (typeof window === "undefined" || !tonAn()) return
+  // Wichtig: kontext() VOR dem laeuft-Guard aufrufen — jeder Tipp
+  // ist eine echte Nutzergeste und darf einen hängenden (suspended)
+  // AudioContext aufwecken. Sonst bleibt "laeuft" gesetzt, während
+  // nichts spielt, und erst Mute+Unmute reparierte es.
+  const ac = kontext()
+  if (!ac) return
+  if (laeuft) return
   laeuft = true
   naechsteZeit = 0
   planer()
