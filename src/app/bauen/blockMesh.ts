@@ -19,10 +19,17 @@ export async function materialFuerBlock(
     map: textur,
     roughness: 0.82,
     metalness: 0.04,
+    // Texturen mit Löchern (Leiter-Sprossen, Pflanzen) sollen dort
+    // durchsichtig sein statt schwarz zu füllen.
+    ...(DURCHBROCHEN.has(gegenstandId)
+      ? { transparent: true, alphaTest: 0.5 }
+      : {}),
   })
   cache.set(gegenstandId, material)
   return material
 }
+
+const DURCHBROCHEN = new Set(["leiter", "setzling", "samen", "weizen"])
 
 // Formteile: Stufen und Treppen sind keine vollen Würfel — sie
 // bestehen aus Quadern relativ zur Zellenmitte (Anteile der Kante).
@@ -41,6 +48,13 @@ const FORMEN: Record<
     { x: 0, y: 0.245, z: -0.245, w: 0.98, h: 0.49, t: 0.49 },
   ],
   glasscheibe: [{ x: 0, y: 0, z: 0, w: 0.98, h: 0.98, t: 0.14 }],
+  tuer: [{ x: 0, y: 0, z: -0.42, w: 0.98, h: 0.98, t: 0.14 }],
+  zaun: [
+    { x: 0, y: 0, z: 0, w: 0.24, h: 0.98, t: 0.24 },
+    { x: 0, y: 0.18, z: 0, w: 0.98, h: 0.14, t: 0.14 },
+    { x: 0, y: -0.2, z: 0, w: 0.98, h: 0.14, t: 0.14 },
+  ],
+  leiter: [{ x: 0, y: 0, z: -0.44, w: 0.98, h: 0.98, t: 0.1 }],
   setzling: [{ x: 0, y: -0.2, z: 0, w: 0.4, h: 0.58, t: 0.4 }],
   samen: [{ x: 0, y: -0.4, z: 0, w: 0.7, h: 0.18, t: 0.7 }],
   weizen: [{ x: 0, y: -0.1, z: 0, w: 0.86, h: 0.78, t: 0.86 }],
@@ -54,6 +68,7 @@ const MESH_TEXTUR: Record<string, string> = {
   steinstufe: "stein",
   steintreppe: "stein",
   glasscheibe: "glas",
+  zaun: "holz",
 }
 
 // Kein Cache: die Szenen entsorgen Geometrien beim Entfernen einzelner

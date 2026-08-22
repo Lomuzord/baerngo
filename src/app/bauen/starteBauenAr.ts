@@ -75,6 +75,14 @@ export async function starteBauenAr(
     domOverlay: { root: overlay },
   })
 
+  // Langdruck beim Abbauen darf im DOM-Overlay weder Textauswahl noch
+  // Kontextmenü auslösen — CSS allein reicht auf Android Chrome nicht
+  // zuverlässig, darum zusätzlich die Events selbst abwürgen.
+  const schluckAuswahl = (event: Event) => event.preventDefault()
+  const dok = overlay.ownerDocument
+  dok.addEventListener("selectstart", schluckAuswahl)
+  overlay.addEventListener("contextmenu", schluckAuswahl)
+
   // "end" sofort abfangen — die Systemgeste kann die Sitzung beenden,
   // während wir unten noch auf setSession/HitTest warten.
   let beendet = false
@@ -82,6 +90,8 @@ export async function starteBauenAr(
   session.addEventListener("end", () => {
     if (beendet) return
     beendet = true
+    dok.removeEventListener("selectstart", schluckAuswahl)
+    overlay.removeEventListener("contextmenu", schluckAuswahl)
     spaeterAbbau?.()
     meldungen.aufEnde?.()
   })

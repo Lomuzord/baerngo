@@ -47,6 +47,9 @@ const HOLZART = new Set([
   "buecherregal",
   "holzstufe",
   "holztreppe",
+  "tuer",
+  "zaun",
+  "leiter",
 ])
 
 // Erdiges gräbt sich mit der Schaufel schneller
@@ -131,6 +134,9 @@ const HAERTE: Record<string, number> = {
   steinstufe: 1.4,
   holztreppe: 1,
   steintreppe: 1.5,
+  tuer: 1,
+  zaun: 0.9,
+  leiter: 0.5,
 }
 
 

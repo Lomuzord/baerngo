@@ -1720,6 +1720,17 @@
   pointer-events: none;
 }
 
+/* In der XR-Session hebt Chrome das DOM-Overlay aus dem normalen
+   Fluss — die Auswahl-Sperre von .mc-body kommt dort nicht sicher an.
+   Darum explizit auf dem Overlay und ALLEN Kindern: Langdruck beim
+   Abbauen darf nie eine blaue Textauswahl starten. */
+.mc-ar-overlay,
+.mc-ar-overlay * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
 .mc-ar-live .mc-ar-overlay {
   pointer-events: auto;
   touch-action: none;

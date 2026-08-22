@@ -134,6 +134,9 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
     name: "Holztreppe",
     textur: "/bloecke/holztreppe.png",
   },
+  tuer: { id: "tuer", name: "Tür", textur: "/bloecke/tuer.png" },
+  zaun: { id: "zaun", name: "Zaun", textur: "/bloecke/zaun.png" },
+  leiter: { id: "leiter", name: "Leiter", textur: "/bloecke/leiter.png" },
   steintreppe: {
     id: "steintreppe",
     name: "Steintreppe",

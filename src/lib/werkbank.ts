@@ -326,6 +326,42 @@ const REZEPTE: readonly Rezept[] = [
     ergebnisAnzahl: 4,
   },
   {
+    id: "tuer",
+    name: "Tür",
+    zutat: { holz: 6 },
+    form: [
+      "holz", "holz", null,
+      "holz", "holz", null,
+      "holz", "holz", null,
+    ],
+    ergebnisId: "tuer",
+    ergebnisAnzahl: 3,
+  },
+  {
+    id: "zaun",
+    name: "Zaun",
+    zutat: { holz: 4, stock: 2 },
+    form: [
+      null, null, null,
+      "holz", "stock", "holz",
+      "holz", "stock", "holz",
+    ],
+    ergebnisId: "zaun",
+    ergebnisAnzahl: 3,
+  },
+  {
+    id: "leiter",
+    name: "Leiter",
+    zutat: { stock: 7 },
+    form: [
+      "stock", null, "stock",
+      "stock", "stock", "stock",
+      "stock", null, "stock",
+    ],
+    ergebnisId: "leiter",
+    ergebnisAnzahl: 3,
+  },
+  {
     id: "brot",
     name: "Brot",
     zutat: { weizen: 3 },
