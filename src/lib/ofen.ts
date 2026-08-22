@@ -26,7 +26,15 @@ const SCHMELZE: readonly Schmelzrezept[] = [
   { eingabe: "stamm", ausgabe: "kohle", ausgabeAnzahl: 1 },
 ]
 
-const BRENNSTOFF = new Set(["kohle", "stamm", "holz", "stock", "werkbank"])
+const BRENNSTOFF = new Set([
+  "kohle",
+  "kohleblock",
+  "stamm",
+  "holz",
+  "stock",
+  "werkbank",
+  "buecherregal",
+])
 
 export function leererOfen(): OfenStand {
   return { eingabe: null, brennstoff: null, ausgabe: null }

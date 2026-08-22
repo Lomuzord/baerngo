@@ -259,22 +259,28 @@ export function WerkbankForm() {
           </button>
         </div>
         <p className="mc-kicker">Ofen</p>
-        <div className="mc-table mc-ofen-ui">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/bloecke/ofen.png" alt="" className="mc-ofen-icon" />
-          <div className="mc-ofen-feuer">
-            {ofenFachKnopf("eingabe", 20, ofen.eingabe, "Erz / Stamm", tippeRaster)}
-            {ofenFachKnopf(
-              "brennstoff",
-              21,
-              ofen.brennstoff,
-              "Holz / Kohle",
-              tippeRaster,
-            )}
+        {(vorrat.ofen ?? 0) > 0 ? (
+          <div className="mc-table mc-ofen-ui">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/bloecke/ofen.png" alt="" className="mc-ofen-icon" />
+            <div className="mc-ofen-feuer">
+              {ofenFachKnopf("eingabe", 20, ofen.eingabe, "Erz / Stamm", tippeRaster)}
+              {ofenFachKnopf(
+                "brennstoff",
+                21,
+                ofen.brennstoff,
+                "Holz / Kohle",
+                tippeRaster,
+              )}
+            </div>
+            <span className="mc-arrow">→</span>
+            {ofenFachKnopf("ausgabe", 22, ofen.ausgabe, "Raus", tippeRaster, true)}
           </div>
-          <span className="mc-arrow">→</span>
-          {ofenFachKnopf("ausgabe", 22, ofen.ausgabe, "Raus", tippeRaster, true)}
-        </div>
+        ) : (
+          <p className="mc-tagline">
+            Baue zuerst einen Ofen — 8 Stein im Ring.
+          </p>
+        )}
         <InventarRaster
           slots={slots}
           onSlots={setzeSlots}
@@ -289,6 +295,37 @@ export function WerkbankForm() {
       {rezept ? (
         <div className="mc-rezept-karte">
           <p className="mc-rezept-name">{rezept.name}</p>
+          {rezept.gruppe ? (
+            <div className="mc-varianten" aria-label="Varianten">
+              {listRezepte()
+                .filter((variante) => variante.gruppe === rezept.gruppe)
+                .map((variante) => {
+                  const vItem = gegenstandById(variante.ergebnisId)
+                  return (
+                    <button
+                      key={variante.id}
+                      type="button"
+                      className={
+                        variante.id === rezept.id
+                          ? "mc-slot mc-variante mc-variante-wahl"
+                          : "mc-slot mc-variante"
+                      }
+                      onClick={() => setRezeptId(variante.id)}
+                      aria-label={variante.name}
+                    >
+                      {vItem ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={vItem.textur}
+                          alt=""
+                          className="mc-slot-block"
+                        />
+                      ) : null}
+                    </button>
+                  )
+                })}
+            </div>
+          ) : null}
           <div className="mc-grid3 mc-grid3-mini" aria-hidden>
             {vorschau.map((zelle, index) => {
               const item = zelle ? gegenstandById(zelle) : null
@@ -321,7 +358,7 @@ export function WerkbankForm() {
         </div>
       ) : null}
       <ul className="mc-rezepte">
-        {listRezepte().map((eintrag) => {
+        {gruppierteRezepte(vorrat).map((eintrag) => {
           const item = gegenstandById(eintrag.ergebnisId)
           const bereit = kannRezept(vorrat, leeresRaster(), eintrag.id)
           return (
@@ -356,6 +393,30 @@ export function WerkbankForm() {
       </ul>
     </section>
   )
+}
+
+// Eine Zeile pro Rezeptgruppe: Gruppen (z. B. die vier Spitzhacken)
+// zeigen die beste Variante, die man sich gerade leisten kann —
+// die anderen Stufen wählt man über die Chips in der Rezeptkarte.
+function gruppierteRezepte(vorrat: Record<string, number>) {
+  const liste: ReturnType<typeof listRezepte>[number][] = []
+  const gesehen = new Set<string>()
+  for (const rezept of listRezepte()) {
+    if (!rezept.gruppe) {
+      liste.push(rezept)
+      continue
+    }
+    if (gesehen.has(rezept.gruppe)) continue
+    gesehen.add(rezept.gruppe)
+    const varianten = listRezepte().filter(
+      (kandidat) => kandidat.gruppe === rezept.gruppe,
+    )
+    const beste = [...varianten]
+      .reverse()
+      .find((kandidat) => kannRezept(vorrat, leeresRaster(), kandidat.id))
+    liste.push(beste ?? rezept)
+  }
+  return liste
 }
 
 function ofenFachKnopf(

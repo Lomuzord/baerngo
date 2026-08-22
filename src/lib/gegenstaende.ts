@@ -58,6 +58,17 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
   },
   ofen: { id: "ofen", name: "Ofen", textur: "/bloecke/ofen.png" },
   werkbank: { id: "werkbank", name: "Werkbank", textur: "/bloecke/werkbank.png" },
+  kohleblock: {
+    id: "kohleblock",
+    name: "Kohleblock",
+    textur: "/bloecke/kohleblock.png",
+  },
+  buecherregal: {
+    id: "buecherregal",
+    name: "Bücherregal",
+    textur: "/bloecke/buecherregal.png",
+  },
+  eimer: { id: "eimer", name: "Eimer", textur: "/bloecke/eimer.png" },
   goldblock: { id: "goldblock", name: "Goldblock", textur: "/bloecke/goldblock.png" },
   honigbrot: { id: "honigbrot", name: "Honigbrot", textur: "/bloecke/honigbrot.png" },
   bernwappen: { id: "bernwappen", name: "Bernwappen", textur: "/bloecke/bernwappen.png" },
@@ -104,6 +115,7 @@ const NICHT_SETZBAR = new Set([
   "stock",
   "kohle",
   "diamant",
+  "eimer",
 ])
 
 export function istWerkzeug(id: string): boolean {
@@ -113,7 +125,8 @@ export function istWerkzeug(id: string): boolean {
     id === "eisenpickel" ||
     id === "diamantpickel" ||
     id === "axt" ||
-    id === "schwert"
+    id === "schwert" ||
+    id === "eimer"
   )
 }
 

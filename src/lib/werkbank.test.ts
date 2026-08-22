@@ -7,6 +7,7 @@ import {
   klickRaster,
   leeresRaster,
   legeRezept,
+  listRezepte,
   nimmCraft,
   rasterAusIds,
 } from "./werkbank"
@@ -201,6 +202,47 @@ describe("craft", () => {
     const genommen = nimmCraft(raster)
     expect(genommen.ok).toBe(true)
     if (genommen.ok) expect(genommen.anzahl).toBe(4)
+  })
+
+  it("crafts coal block, bookshelf, and bucket like real Minecraft", () => {
+    expect(
+      ergebnisFuerRaster(rasterAusIds(Array(9).fill("kohle")))?.id,
+    ).toBe("kohleblock")
+    const zurueck = nimmCraft(
+      rasterAusIds([
+        null, null, null, null, "kohleblock", null, null, null, null,
+      ]),
+    )
+    expect(zurueck.ok).toBe(true)
+    if (zurueck.ok) expect(zurueck.anzahl).toBe(9)
+    expect(
+      ergebnisFuerRaster(
+        rasterAusIds([
+          "holz", "holz", "holz",
+          "buch", "buch", "buch",
+          "holz", "holz", "holz",
+        ]),
+      )?.id,
+    ).toBe("buecherregal")
+    expect(
+      ergebnisFuerRaster(
+        rasterAusIds([
+          "eisen", null, "eisen",
+          null, "eisen", null,
+          null, null, null,
+        ]),
+      )?.id,
+    ).toBe("eimer")
+  })
+
+  it("groups the four pickaxe tiers under one gruppe", () => {
+    const gruppen = listRezepte().filter((r) => r.gruppe === "spitzhacke")
+    expect(gruppen.map((r) => r.ergebnisId)).toEqual([
+      "holzpickel",
+      "pickel",
+      "eisenpickel",
+      "diamantpickel",
+    ])
   })
 
   it("crafts a sword from the upright blade shape", () => {

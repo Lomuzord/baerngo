@@ -23,10 +23,11 @@ export function listPickelArten(): string[] {
   return Object.keys(PICKEL_ARTEN)
 }
 
-const HOLZART = new Set(["stamm", "holz", "laub", "werkbank"])
+const HOLZART = new Set(["stamm", "holz", "laub", "werkbank", "buecherregal"])
 const STEINART = new Set([
   "stein",
   "bruchstein",
+  "kohleblock",
   "kies",
   "sandstein",
   "ziegel",
@@ -79,6 +80,8 @@ const HAERTE: Record<string, number> = {
   werkbank: 1.1,
   bruchstein: 1.5,
   fackel: 0.2,
+  kohleblock: 2.0,
+  buecherregal: 1.2,
 }
 
 // Was ein abgebauter Block wirklich fallen lässt — Stein wird wie in

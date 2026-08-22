@@ -15,6 +15,9 @@ export type Rezept = {
   form?: RasterForm
   ergebnisId: string
   ergebnisAnzahl: number
+  // Rezepte mit gleicher Gruppe erscheinen als EIN Listeneintrag
+  // mit wählbaren Varianten (z. B. die vier Spitzhacken-Stufen)
+  gruppe?: string
 }
 
 const REZEPTE: readonly Rezept[] = [
@@ -53,6 +56,7 @@ const REZEPTE: readonly Rezept[] = [
     ],
     ergebnisId: "holzpickel",
     ergebnisAnzahl: 1,
+    gruppe: "spitzhacke",
   },
   {
     id: "pickel",
@@ -71,6 +75,7 @@ const REZEPTE: readonly Rezept[] = [
     ],
     ergebnisId: "pickel",
     ergebnisAnzahl: 1,
+    gruppe: "spitzhacke",
   },
   {
     id: "eisenpickel",
@@ -89,6 +94,7 @@ const REZEPTE: readonly Rezept[] = [
     ],
     ergebnisId: "eisenpickel",
     ergebnisAnzahl: 1,
+    gruppe: "spitzhacke",
   },
   {
     id: "diamantpickel",
@@ -107,6 +113,7 @@ const REZEPTE: readonly Rezept[] = [
     ],
     ergebnisId: "diamantpickel",
     ergebnisAnzahl: 1,
+    gruppe: "spitzhacke",
   },
   {
     id: "axt",
@@ -275,6 +282,56 @@ const REZEPTE: readonly Rezept[] = [
     ],
     ergebnisId: "fackel",
     ergebnisAnzahl: 4,
+  },
+  {
+    id: "kohleblock",
+    name: "Kohleblock",
+    zutat: { kohle: 9 },
+    ergebnisId: "kohleblock",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "kohle-aus-block",
+    name: "Kohle",
+    zutat: { kohleblock: 1 },
+    ergebnisId: "kohle",
+    ergebnisAnzahl: 9,
+  },
+  {
+    id: "buecherregal",
+    name: "Bücherregal",
+    zutat: { holz: 6, buch: 3 },
+    form: [
+      "holz",
+      "holz",
+      "holz",
+      "buch",
+      "buch",
+      "buch",
+      "holz",
+      "holz",
+      "holz",
+    ],
+    ergebnisId: "buecherregal",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "eimer",
+    name: "Eimer",
+    zutat: { eisen: 3 },
+    form: [
+      null,
+      null,
+      null,
+      "eisen",
+      null,
+      "eisen",
+      null,
+      "eisen",
+      null,
+    ],
+    ergebnisId: "eimer",
+    ergebnisAnzahl: 1,
   },
   {
     id: "moosstein",

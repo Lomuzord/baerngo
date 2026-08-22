@@ -204,6 +204,24 @@
   }
 }
 
+.mc-varianten {
+  display: flex;
+  gap: 6px;
+  margin: 0.4rem 0;
+}
+
+.mc-varianten .mc-variante {
+  min-width: 44px;
+  height: 44px;
+  padding: 4px;
+}
+
+.mc-variante-wahl {
+  border-color: #7cfc00;
+  box-shadow: inset -3px -3px 0 #555, inset 3px 3px 0 #c6c6c6,
+    0 0 0 2px #7cfc00;
+}
+
 .mc-ort-karte-modell {
   object-fit: contain;
   background: linear-gradient(#8fd0f5, #eef8fe);
