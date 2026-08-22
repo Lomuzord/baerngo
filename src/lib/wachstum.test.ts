@@ -95,3 +95,26 @@ describe("ernteDrops", () => {
     ])
   })
 })
+
+describe("ackerboden", () => {
+  it("lets seeds grow twice as fast on farmland", () => {
+    const acker = [
+      block("ackerboden", 0, 0, 0),
+      block("samen", 0, 1, 0, 0),
+    ]
+    const halb = wendeWachstumAn(acker, WACHSZEIT_WEIZEN_MS / 2)
+    expect(halb.some((b) => b.gegenstandId === "weizen")).toBe(true)
+    const erde = [block("erde", 0, 0, 0), block("samen", 0, 1, 0, 0)]
+    expect(wendeWachstumAn(erde, WACHSZEIT_WEIZEN_MS / 2)).toBe(erde)
+  })
+
+  it("accepts farmland as planting ground", () => {
+    expect(
+      kannPflanzen([block("ackerboden", 1, 0, 1)], "samen", {
+        ix: 1,
+        iy: 1,
+        iz: 1,
+      }),
+    ).toBe(true)
+  })
+})

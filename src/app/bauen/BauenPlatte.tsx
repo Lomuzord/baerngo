@@ -5,6 +5,7 @@ import {
   abbauDrop,
   anzeigeHaltbarkeit,
   istPickel,
+  istSchaufel,
   nutzePickel,
   type AbbauStand,
 } from "@/lib/abbauen"
@@ -32,7 +33,7 @@ export function BauenPlatte() {
   const overlay = useRef<HTMLDivElement>(null)
   const sitzung = useRef<{ beenden: () => void } | null>(null)
   const { slots, inventar, setzeSlots } = useInventar()
-  const { bloecke, setze, nimmWeg } = useBauen()
+  const { bloecke, setze, nimmWeg, ersetze } = useBauen()
   const { haltbarkeitFuer, setzeHaltbarkeitFuer, maximumFuer } = usePickel()
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
@@ -87,7 +88,11 @@ export function BauenPlatte() {
       ? `Setzen · ${wahlName} · halten baut ab`
       : aktion === "abbauen" && wahl && istPickel(wahl)
         ? `Abbauen · ${wahlName ?? "Spitzhacke"}`
-        : aktion === "abbauen" && wahl === "axt"
+        : aktion === "abbauen" && wahl && istSchaufel(wahl)
+          ? `Graben · ${wahlName ?? "Schaufel"}`
+          : aktion === "abbauen" && wahl === "hacke"
+            ? "Pflügen · Hacke"
+            : aktion === "abbauen" && wahl === "axt"
           ? "Abbauen · Axt"
           : aktion === "abbauen"
             ? "Abbauen · Hand"
@@ -102,7 +107,9 @@ export function BauenPlatte() {
           (slots[wahlIndex]?.anzahl ?? 0) > 0,
       ),
     werkzeug: () =>
-      wahl && (istPickel(wahl) || wahl === "axt") ? wahl : null,
+      wahl && (istPickel(wahl) || istSchaufel(wahl) || wahl === "axt" || wahl === "hacke")
+        ? wahl
+        : null,
     bloecke: () => bloecke,
     abbau: () => ({}),
     aufSetzen: () => {},
@@ -119,7 +126,9 @@ export function BauenPlatte() {
           (slots[wahlIndex]?.anzahl ?? 0) > 0,
       )
     steuerung.current.werkzeug = () =>
-      wahl && (istPickel(wahl) || wahl === "axt") ? wahl : null
+      wahl && (istPickel(wahl) || istSchaufel(wahl) || wahl === "axt" || wahl === "hacke")
+        ? wahl
+        : null
     steuerung.current.bloecke = () => bloecke
     steuerung.current.abbau = () => abbauRef.current
     steuerung.current.aufSetzen = (zelle) => {
@@ -157,6 +166,16 @@ export function BauenPlatte() {
   function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {
     const weg = bloecke.find((block) => block.id === blockId)
     if (!weg) return false
+    if (
+      werkzeug === "hacke" &&
+      (weg.gegenstandId === "erde" || weg.gegenstandId === "gras")
+    ) {
+      // Pflügen wie in Minecraft: die Hacke macht Ackerboden daraus
+      ersetze(blockId, "ackerboden")
+      spieleHaptik("setzen")
+      setHinweis("Gepflügt! Auf Ackerboden wächst Weizen doppelt so schnell.")
+      return true
+    }
     nimmWeg(blockId)
     const drops = ernteDrops(weg.gegenstandId, abbauDrop)
     // Pflanzen direkt darüber verlieren ihren Boden und poppen mit ab
@@ -174,7 +193,7 @@ export function BauenPlatte() {
     const gelegt = legeBeuteInSlotsMitRest(slots, drops)
     if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
     let nextSlots = gelegt.slots
-    if (werkzeug && istPickel(werkzeug)) {
+    if (werkzeug && (istPickel(werkzeug) || istSchaufel(werkzeug))) {
       const max = maximumFuer(werkzeug)
       const bisher = haltbarkeitFuer(werkzeug)
       const bar = bisher > 0 ? bisher : max
@@ -183,7 +202,11 @@ export function BauenPlatte() {
       if (nutzung.zerbrochen) {
         nextSlots = nimmAnzahl(nextSlots, werkzeug, 1) ?? nextSlots
         spieleHaptik("zerbrochen")
-        setHinweis("Die Spitzhacke ist zerbrochen.")
+        setHinweis(
+          istSchaufel(werkzeug)
+            ? "Die Schaufel ist zerbrochen."
+            : "Die Spitzhacke ist zerbrochen.",
+        )
       } else {
         spieleHaptik("abbauen")
         setHinweis("Abgebaut.")

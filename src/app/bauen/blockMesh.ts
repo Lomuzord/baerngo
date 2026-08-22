@@ -24,10 +24,92 @@ export async function materialFuerBlock(
   return material
 }
 
+// Formteile: Stufen und Treppen sind keine vollen Würfel — sie
+// bestehen aus Quadern relativ zur Zellenmitte (Anteile der Kante).
+const FORMEN: Record<
+  string,
+  { x: number; y: number; z: number; w: number; h: number; t: number }[]
+> = {
+  holzstufe: [{ x: 0, y: -0.25, z: 0, w: 0.98, h: 0.49, t: 0.98 }],
+  steinstufe: [{ x: 0, y: -0.25, z: 0, w: 0.98, h: 0.49, t: 0.98 }],
+  holztreppe: [
+    { x: 0, y: -0.25, z: 0, w: 0.98, h: 0.49, t: 0.98 },
+    { x: 0, y: 0.245, z: -0.245, w: 0.98, h: 0.49, t: 0.49 },
+  ],
+  steintreppe: [
+    { x: 0, y: -0.25, z: 0, w: 0.98, h: 0.49, t: 0.98 },
+    { x: 0, y: 0.245, z: -0.245, w: 0.98, h: 0.49, t: 0.49 },
+  ],
+  glasscheibe: [{ x: 0, y: 0, z: 0, w: 0.98, h: 0.98, t: 0.14 }],
+  setzling: [{ x: 0, y: -0.2, z: 0, w: 0.4, h: 0.58, t: 0.4 }],
+  samen: [{ x: 0, y: -0.4, z: 0, w: 0.7, h: 0.18, t: 0.7 }],
+  weizen: [{ x: 0, y: -0.1, z: 0, w: 0.86, h: 0.78, t: 0.86 }],
+}
+
+// Manche Blöcke tragen auf dem Mesh die Textur ihres Grundmaterials —
+// das Inventar-Icon zeigt die Form, der 3D-Block das Material.
+const MESH_TEXTUR: Record<string, string> = {
+  holzstufe: "holz",
+  holztreppe: "holz",
+  steinstufe: "stein",
+  steintreppe: "stein",
+  glasscheibe: "glas",
+}
+
+// Kein Cache: die Szenen entsorgen Geometrien beim Entfernen einzelner
+// Blöcke — jede Mesh bekommt darum ihre eigene Instanz.
+export function geometrieFuerBlock(
+  THREE: typeof import("three"),
+  gegenstandId: string,
+  kante: number,
+) {
+  const teile = FORMEN[gegenstandId]
+  if (!teile) {
+    return new THREE.BoxGeometry(kante * 0.98, kante * 0.98, kante * 0.98)
+  }
+  const quader = teile.map((teil) =>
+    new THREE.BoxGeometry(
+      kante * teil.w,
+      kante * teil.h,
+      kante * teil.t,
+    ).translate(kante * teil.x, kante * teil.y, kante * teil.z),
+  )
+  return mergeBoxen(THREE, quader)
+}
+
+// Kleiner Merge ohne examples-Import: nicht-indizierte Quader aneinanderhängen
+function mergeBoxen(
+  THREE: typeof import("three"),
+  teile: InstanceType<typeof THREE.BoxGeometry>[],
+) {
+  if (teile.length === 1) return teile[0]!
+  const offen = teile.map((teil) => teil.toNonIndexed())
+  const lagen = ["position", "normal", "uv"] as const
+  const zusammen = new THREE.BufferGeometry()
+  for (const name of lagen) {
+    const daten = offen.map(
+      (teil) => teil.getAttribute(name) as InstanceType<typeof THREE.BufferAttribute>,
+    )
+    const groesse = daten[0]!.itemSize
+    const gesamt = new Float32Array(
+      daten.reduce((summe, lage) => summe + lage.array.length, 0),
+    )
+    let cursor = 0
+    for (const lage of daten) {
+      gesamt.set(lage.array as Float32Array, cursor)
+      cursor += lage.array.length
+    }
+    zusammen.setAttribute(name, new THREE.BufferAttribute(gesamt, groesse))
+  }
+  return zusammen
+}
+
 export async function materialienFuerWuerfel(
   THREE: typeof import("three"),
   gegenstandId: string,
 ) {
+  const texturId = MESH_TEXTUR[gegenstandId]
+  if (texturId) return materialFuerBlock(THREE, texturId)
   if (gegenstandId !== "gras") return materialFuerBlock(THREE, gegenstandId)
   const [gras, erde] = await Promise.all([
     materialFuerBlock(THREE, "gras"),

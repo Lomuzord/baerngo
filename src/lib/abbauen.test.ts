@@ -97,3 +97,18 @@ describe("nutzePickel", () => {
     expect(anzeigeHaltbarkeit(0, 0)).toBe(0)
   })
 })
+
+describe("schaufel", () => {
+  it("digs earthy blocks faster per tier, stony ones at hand speed", () => {
+    const hand = abbaudauerMs("sand", null)
+    expect(abbaudauerMs("sand", "schaufel")).toBeLessThan(hand)
+    expect(abbaudauerMs("sand", "diamantschaufel")).toBeLessThan(
+      abbaudauerMs("sand", "holzschaufel"),
+    )
+    expect(abbaudauerMs("stein", "schaufel")).toBe(abbaudauerMs("stein", null))
+  })
+
+  it("farmland drops plain dirt", () => {
+    expect(abbauDrop("ackerboden")).toBe("erde")
+  })
+})

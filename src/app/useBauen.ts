@@ -37,6 +37,18 @@ export function useBauen() {
     })
   }, [])
 
+  // Tauscht die Art eines Blocks an Ort und Stelle — z. B. Hacke
+  // verwandelt Erde in Ackerboden.
+  const ersetze = useCallback((blockId: string, gegenstandId: string) => {
+    setBloecke((bisher) => {
+      const danach = bisher.map((block) =>
+        block.id === blockId ? { ...block, gegenstandId } : block,
+      )
+      schreibeBloecke(danach)
+      return danach
+    })
+  }, [])
+
   const nimmWeg = useCallback((blockId: string) => {
     setBloecke((bisher) => {
       const danach = nimmBlock(bisher, blockId)
@@ -45,7 +57,7 @@ export function useBauen() {
     })
   }, [])
 
-  return { bloecke, setze, nimmWeg }
+  return { bloecke, setze, nimmWeg, ersetze }
 }
 
 function leseBloecke(): GesetzterBlock[] {

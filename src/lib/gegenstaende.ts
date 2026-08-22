@@ -83,6 +83,62 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
   samen: { id: "samen", name: "Samen", textur: "/bloecke/samen.png" },
   weizen: { id: "weizen", name: "Weizen", textur: "/bloecke/weizen.png" },
   brot: { id: "brot", name: "Brot", textur: "/bloecke/brot.png" },
+  holzschaufel: {
+    id: "holzschaufel",
+    name: "Holzschaufel",
+    textur: "/bloecke/holzschaufel.png",
+  },
+  schaufel: {
+    id: "schaufel",
+    name: "Steinschaufel",
+    textur: "/bloecke/schaufel.png",
+  },
+  eisenschaufel: {
+    id: "eisenschaufel",
+    name: "Eisenschaufel",
+    textur: "/bloecke/eisenschaufel.png",
+  },
+  diamantschaufel: {
+    id: "diamantschaufel",
+    name: "Diamantschaufel",
+    textur: "/bloecke/diamantschaufel.png",
+  },
+  hacke: { id: "hacke", name: "Hacke", textur: "/bloecke/hacke.png" },
+  ackerboden: {
+    id: "ackerboden",
+    name: "Ackerboden",
+    textur: "/bloecke/ackerboden.png",
+  },
+  eisenblock: {
+    id: "eisenblock",
+    name: "Eisenblock",
+    textur: "/bloecke/eisenblock.png",
+  },
+  glasscheibe: {
+    id: "glasscheibe",
+    name: "Glasscheibe",
+    textur: "/bloecke/glasscheibe.png",
+  },
+  holzstufe: {
+    id: "holzstufe",
+    name: "Holzstufe",
+    textur: "/bloecke/holzstufe.png",
+  },
+  steinstufe: {
+    id: "steinstufe",
+    name: "Steinstufe",
+    textur: "/bloecke/steinstufe.png",
+  },
+  holztreppe: {
+    id: "holztreppe",
+    name: "Holztreppe",
+    textur: "/bloecke/holztreppe.png",
+  },
+  steintreppe: {
+    id: "steintreppe",
+    name: "Steintreppe",
+    textur: "/bloecke/steintreppe.png",
+  },
   goldblock: { id: "goldblock", name: "Goldblock", textur: "/bloecke/goldblock.png" },
   honigbrot: { id: "honigbrot", name: "Honigbrot", textur: "/bloecke/honigbrot.png" },
   bernwappen: { id: "bernwappen", name: "Bernwappen", textur: "/bloecke/bernwappen.png" },
@@ -132,6 +188,11 @@ const NICHT_SETZBAR = new Set([
   "eimer",
   "weizen",
   "brot",
+  "holzschaufel",
+  "schaufel",
+  "eisenschaufel",
+  "diamantschaufel",
+  "hacke",
 ])
 
 export function istWerkzeug(id: string): boolean {
@@ -143,7 +204,9 @@ export function istWerkzeug(id: string): boolean {
     id === "axt" ||
     id === "schwert" ||
     id === "eimer" ||
-    id === "wassereimer"
+    id === "wassereimer" ||
+    id === "hacke" ||
+    id.endsWith("schaufel")
   )
 }
 

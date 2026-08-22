@@ -11,19 +11,53 @@ const PICKEL_ARTEN: Record<string, { ms: number; haltbarkeit: number }> = {
   diamantpickel: { ms: 180, haltbarkeit: 160 },
 }
 
+// Schaufeln: gleiche Stufen-Geschwindigkeiten, wirken auf Erdiges
+const SCHAUFEL_ARTEN: Record<string, { ms: number; haltbarkeit: number }> = {
+  holzschaufel: { ms: 725, haltbarkeit: 16 },
+  schaufel: { ms: 380, haltbarkeit: PICKEL_HALTBARKEIT },
+  eisenschaufel: { ms: 240, haltbarkeit: 64 },
+  diamantschaufel: { ms: 180, haltbarkeit: 160 },
+}
+
 export function istPickel(id: string | null | undefined): boolean {
   return Boolean(id && PICKEL_ARTEN[id])
 }
 
+export function istSchaufel(id: string | null | undefined): boolean {
+  return Boolean(id && SCHAUFEL_ARTEN[id])
+}
+
 export function pickelHaltbarkeitFuer(id: string): number {
-  return PICKEL_ARTEN[id]?.haltbarkeit ?? PICKEL_HALTBARKEIT
+  return (
+    PICKEL_ARTEN[id]?.haltbarkeit ??
+    SCHAUFEL_ARTEN[id]?.haltbarkeit ??
+    PICKEL_HALTBARKEIT
+  )
 }
 
 export function listPickelArten(): string[] {
   return Object.keys(PICKEL_ARTEN)
 }
 
-const HOLZART = new Set(["stamm", "holz", "laub", "werkbank", "buecherregal"])
+const HOLZART = new Set([
+  "stamm",
+  "holz",
+  "laub",
+  "werkbank",
+  "buecherregal",
+  "holzstufe",
+  "holztreppe",
+])
+
+// Erdiges gräbt sich mit der Schaufel schneller
+const ERDART = new Set([
+  "erde",
+  "gras",
+  "kies",
+  "sand",
+  "lehm",
+  "ackerboden",
+])
 const STEINART = new Set([
   "stein",
   "bruchstein",
@@ -46,6 +80,10 @@ const STEINART = new Set([
   "diamantblock",
   "glas",
   "bernwappen",
+  "eisenblock",
+  "glasscheibe",
+  "steinstufe",
+  "steintreppe",
 ])
 
 const HAERTE: Record<string, number> = {
@@ -86,6 +124,13 @@ const HAERTE: Record<string, number> = {
   wasser: 0.2,
   samen: 0.2,
   weizen: 0.2,
+  ackerboden: 0.7,
+  eisenblock: 2.2,
+  glasscheibe: 0.3,
+  holzstufe: 0.9,
+  steinstufe: 1.4,
+  holztreppe: 1,
+  steintreppe: 1.5,
 }
 
 
@@ -93,6 +138,8 @@ const HAERTE: Record<string, number> = {
 // Minecraft zu Bruchstein.
 export function abbauDrop(gegenstandId: string): string {
   if (gegenstandId === "stein") return "bruchstein"
+  // Ackerboden wird beim Abbauen wieder zu schlichter Erde
+  if (gegenstandId === "ackerboden") return "erde"
   return gegenstandId
 }
 
@@ -106,6 +153,12 @@ export function abbaudauerMs(
   let basis = HAND_MS
   if (werkzeugId && istPickel(werkzeugId) && STEINART.has(gegenstandId)) {
     basis = PICKEL_ARTEN[werkzeugId]!.ms
+  } else if (
+    werkzeugId &&
+    istSchaufel(werkzeugId) &&
+    ERDART.has(gegenstandId)
+  ) {
+    basis = SCHAUFEL_ARTEN[werkzeugId]!.ms
   } else if (werkzeugId === "axt" && HOLZART.has(gegenstandId)) {
     basis = AXT_MS
   }

@@ -25,7 +25,7 @@ import {
   type Ebene,
   type Zelle,
 } from "@/lib/spielflaeche"
-import {
+import { geometrieFuerBlock,
   entferneRiss,
   materialFuerBlock,
   materialienFuerWuerfel,
@@ -264,7 +264,7 @@ export async function starteBauenAr(
       if (!mesh) {
         const material = await materialienFuerWuerfel(THREE, block.gegenstandId)
         mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(kante * 0.98, kante * 0.98, kante * 0.98),
+          geometrieFuerBlock(THREE, block.gegenstandId, kante),
           material,
         )
         mesh.userData.blockId = block.id

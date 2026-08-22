@@ -1,4 +1,4 @@
-import { istPickel, listPickelArten } from "./abbauen"
+import { istPickel, istSchaufel, listPickelArten } from "./abbauen"
 import { blockFaellt, istSetzbar } from "./gegenstaende"
 import {
   EBENE_RADIUS_ZELLEN,
@@ -32,7 +32,12 @@ export function neuerBlock(
 }
 
 export function istAbbauWerkzeug(gegenstandId: string): boolean {
-  return istPickel(gegenstandId) || gegenstandId === "axt"
+  return (
+    istPickel(gegenstandId) ||
+    istSchaufel(gegenstandId) ||
+    gegenstandId === "axt" ||
+    gegenstandId === "hacke"
+  )
 }
 
 export function aktionFuerHand(gegenstandId: string | null): BauAktion {

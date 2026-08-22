@@ -31,7 +31,11 @@ export function kannPflanzen(
       block.zelle.iy === zelle.iy - 1 &&
       block.zelle.iz === zelle.iz,
   )
-  return darunter?.gegenstandId === "erde" || darunter?.gegenstandId === "gras"
+  return (
+    darunter?.gegenstandId === "erde" ||
+    darunter?.gegenstandId === "gras" ||
+    darunter?.gegenstandId === "ackerboden"
+  )
 }
 
 // Lässt alles wachsen, was reif ist. Gibt bei Nichtstun dieselbe
@@ -45,7 +49,16 @@ export function wendeWachstumAn(
   for (const block of bloecke) {
     if (block.gesetztUm == null) continue
     const alter = jetzt - block.gesetztUm
-    if (block.gegenstandId === "samen" && alter >= WACHSZEIT_WEIZEN_MS) {
+    // Auf Ackerboden reift Weizen doppelt so schnell
+    const aufAcker = bloecke.some(
+      (eintrag) =>
+        eintrag.gegenstandId === "ackerboden" &&
+        eintrag.zelle.ix === block.zelle.ix &&
+        eintrag.zelle.iz === block.zelle.iz &&
+        eintrag.zelle.iy === block.zelle.iy - 1,
+    )
+    const weizenZeit = aufAcker ? WACHSZEIT_WEIZEN_MS / 2 : WACHSZEIT_WEIZEN_MS
+    if (block.gegenstandId === "samen" && alter >= weizenZeit) {
       liste = liste.map((eintrag) =>
         eintrag.id === block.id
           ? {
