@@ -12,8 +12,8 @@ export const TIEFE_UNIFORMS = {
   tiefeUv: { value: new Float32Array(16) },
   // Sichtfeld in Pixeln: x, y, Breite, Höhe
   tiefeFeld: { value: new Float32Array([0, 0, 1, 1]) },
-  // x: Rohwert -> Meter, y: an/aus
-  tiefeWerte: { value: new Float32Array([0.001, 0]) },
+  // x: Rohwert -> Meter, y: an/aus, z: Toleranz in Metern
+  tiefeWerte: { value: new Float32Array([0.001, 0, 0.15, 0]) },
 }
 
 // Baut den Tiefentest in ein Material ein: Bildpunkte, vor denen etwas
@@ -42,7 +42,7 @@ function verpasseTiefe(material: { onBeforeCompile: unknown }) {
       `uniform sampler2D tiefeKarte;
 uniform mat4 tiefeUv;
 uniform vec4 tiefeFeld;
-uniform vec2 tiefeWerte;
+uniform vec4 tiefeWerte;
 varying float vTiefeAbstand;
 ` +
       shader.fragmentShader.replace(
@@ -54,8 +54,11 @@ varying float vTiefeAbstand;
     if (tuv.x >= 0.0 && tuv.x <= 1.0 && tuv.y >= 0.0 && tuv.y <= 1.0) {
       vec2 roh = texture2D(tiefeKarte, tuv).rg;
       float echt = (roh.r * 255.0 + roh.g * 255.0 * 256.0) * tiefeWerte.x;
-      // 0 heisst "nicht gemessen" — dann nichts wegschneiden
-      if (echt > 0.05 && echt < vTiefeAbstand - 0.06) discard;
+      // 0 heisst "nicht gemessen" — dann nichts wegschneiden.
+      // Die Toleranz verhindert, dass eine Fläche direkt auf dem
+      // Boden sich selbst wegschneidet: die geschätzte Tiefe
+      // schwankt pro Bild um einige Zentimeter.
+      if (echt > 0.05 && echt < vTiefeAbstand - tiefeWerte.z) discard;
     }
   }`,
       )

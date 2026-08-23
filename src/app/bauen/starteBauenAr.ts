@@ -3,7 +3,11 @@ import {
   rissStufeVonAnteil,
   type AbbauStand,
 } from "@/lib/abbauen"
-import { tiefeMoeglich, tiefenOptionen } from "@/lib/tiefe"
+import {
+  TIEFE_TOLERANZ_METER,
+  tiefeMoeglich,
+  tiefenOptionen,
+} from "@/lib/tiefe"
 import {
   ndcVonViewport,
   webXrFeatures,
@@ -802,6 +806,7 @@ export async function starteBauenAr(
       }
       werte[0] = info.rawValueToMeters
       werte[1] = 1
+      werte[2] = TIEFE_TOLERANZ_METER
       melde(
         `Tiefe aktiv · ${info.width}×${info.height} · Feld ${Math.round(
           ziel[2],

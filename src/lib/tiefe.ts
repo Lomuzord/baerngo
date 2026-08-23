@@ -51,7 +51,7 @@ export function tiefeInMetern(
 // Wie viel näher die echte Welt sein muss, damit wir wegschneiden.
 // Etwas Abstand verhindert Flimmern an Kanten, weil die geschätzte
 // Tiefe pro Bild leicht schwankt.
-export const TIEFE_TOLERANZ_METER = 0.06
+export const TIEFE_TOLERANZ_METER = 0.15
 
 export function tiefeVerdeckt(
   echtMeter: number,
