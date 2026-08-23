@@ -309,9 +309,13 @@ export async function starteBauenAr(
         mesh.userData.angel = tuerAngelVersatz(kante, gespiegelt)
       }
       const roh = poseVonZelle(block.zelle, ebene)
+      const angel = mesh.userData.angel as
+        | { x: number; z: number }
+        | undefined
       const pose = {
         ...roh,
-        x: roh.x + ((mesh.userData.angel as number | undefined) ?? 0),
+        x: roh.x + (angel?.x ?? 0),
+        z: roh.z + (angel?.z ?? 0),
       }
       const startY =
         neu && block.fallStart
@@ -337,6 +341,8 @@ export async function starteBauenAr(
 
   const ray = new THREE.Raycaster()
   let zielZelle: Zelle | null = null
+  // Block direkt unter dem Zeiger — für Tipp-Schalter (Hebel, Tür)
+  let zielBlockId: string | null = null
   let xrHalten = false
   let xrAbbauId: string | null = null
   let xrAbbauStart = 0
@@ -469,6 +475,7 @@ export async function starteBauenAr(
   function beginneHalten() {
     xrHalten = true
     xrHatZerstoert = false
+    zielBlockId = null
     xrDruckStart = performance.now()
     const id = xrBlockId()
     if (id) {
@@ -488,9 +495,19 @@ export async function starteBauenAr(
       if (ziel) void sperreEbene(ziel)
     }
     zielZelle = hit && ebene ? zelleFuerTreffer(hit) : null
+    zielBlockId = hit?.blockId ?? null
   }
 
   function endeHalten() {
+    // Kurzer Tipp auf Hebel, Knopf oder Tür schaltet sie
+    if (!xrHatZerstoert && zielBlockId && steuerung.aufSchalte?.(zielBlockId)) {
+      void zeichneBloecke()
+      xrHalten = false
+      zeigerBild = null
+      visier.visible = false
+      brichXrAbbau()
+      return
+    }
     if (
       !xrHatZerstoert &&
       ebeneBeimDruck &&

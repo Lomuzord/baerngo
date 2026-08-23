@@ -133,6 +133,7 @@ export async function startePlattenSzene(
   let lastY = 0
   let hatGezogen = false
   let hatGehalten = false
+  let hatAbgebaut = false
   let abbauId: string | null = null
   let abbauStart = 0
 
@@ -210,9 +211,13 @@ export async function startePlattenSzene(
         mesh.userData.angel = tuerAngelVersatz(kante, gespiegelt)
       }
       const roh = poseVonZelle(block.zelle, TISCH_EBENE)
+      const angel = mesh.userData.angel as
+        | { x: number; z: number }
+        | undefined
       const pose = {
         ...roh,
-        x: roh.x + ((mesh.userData.angel as number | undefined) ?? 0),
+        x: roh.x + (angel?.x ?? 0),
+        z: roh.z + (angel?.z ?? 0),
       }
       const startY =
         neu && block.fallStart
@@ -342,16 +347,19 @@ export async function startePlattenSzene(
   }
 
   function aufZeiger(event: PointerEvent) {
-    if (hatGezogen || hatGehalten) return
+    if (hatGezogen) return
     const hit = trefferBei(event.clientX, event.clientY)
     if (!hit) return
-    // Hebel und Knopf werden per Tipp geschaltet — auch mit Block in
-    // der Hand, wie das Rechtsklick-Verhalten in Minecraft.
+    // Hebel, Knopf und Tür schaltet ein Tipp — auch mit Block in der
+    // Hand, wie der Rechtsklick in Minecraft. Die Dauer zählt dabei
+    // NICHT: Türen brauchen zum Abbauen über eine Sekunde, ein
+    // normaler Tipp ist oft länger als die Zieh-Schwelle.
     const direktId = hit.object.userData.blockId as string | undefined
-    if (direktId && steuerung.aufSchalte?.(direktId)) {
+    if (!hatAbgebaut && direktId && steuerung.aufSchalte?.(direktId)) {
       void zeichneBloecke()
       return
     }
+    if (hatGehalten) return
     if (aktionFuerHand(steuerung.wahl()) !== "setzen" || !steuerung.kannSetzen()) {
       return
     }
@@ -365,6 +373,7 @@ export async function startePlattenSzene(
     ziehen = true
     hatGezogen = false
     hatGehalten = false
+    hatAbgebaut = false
     startX = lastX = event.clientX
     startY = lastY = event.clientY
     leinwand.setPointerCapture(event.pointerId)

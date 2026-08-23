@@ -125,18 +125,28 @@ export function tuerGeometrie(
     kante * 1.96,
     kante * TUER_DICKE,
   )
-  // Blatt hängt seitlich an der Angel und ragt in die Zelle darüber
+  // Der Ursprung ist der Angelzapfen an der Blattkante. In der Tiefe
+  // bleibt das Blatt mittig — der Versatz zur Zellenvorderkante steckt
+  // in der Mesh-Position. Nur so dreht sich die Tür um die Ecke und
+  // schwenkt sauber an die Nachbarkante, statt halb in einen Block zu
+  // rutschen.
   geo.translate(
     (gespiegelt ? -1 : 1) * kante * (TUER_BREITE / 2),
     kante * 0.5,
-    -kante * 0.4,
+    0,
   )
   return geo
 }
 
-// Wo die Angel in der Zelle sitzt (Versatz zur Zellenmitte in Metern)
-export function tuerAngelVersatz(kante: number, gespiegelt: boolean): number {
-  return (gespiegelt ? 1 : -1) * kante * (TUER_BREITE / 2)
+// Wo der Angelzapfen in der Zelle steht (Versatz zur Zellenmitte)
+export function tuerAngelVersatz(
+  kante: number,
+  gespiegelt: boolean,
+): { x: number; z: number } {
+  return {
+    x: (gespiegelt ? 1 : -1) * kante * (TUER_BREITE / 2),
+    z: -kante * 0.4,
+  }
 }
 
 // Kein Cache: die Szenen entsorgen Geometrien beim Entfernen einzelner
