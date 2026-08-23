@@ -2121,3 +2121,17 @@
   margin-top: 0.6rem;
   background: #1a140f;
 }
+
+/* Zustand der AR-Verdeckung — dauerhaft sichtbar, damit man sieht,
+   ob das Gerät wirklich Tiefendaten liefert. */
+.mc-tiefe-status {
+  margin: 0.35rem auto;
+  padding: 0.2rem 0.5rem;
+  max-width: max-content;
+  background: #2b2118e6;
+  border: 2px solid #4a3a28;
+  border-radius: 8px;
+  color: #b6ff7a;
+  font-size: 0.85rem;
+  text-shadow: 1px 1px 0 #000;
+}

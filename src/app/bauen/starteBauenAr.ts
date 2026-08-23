@@ -55,8 +55,8 @@ export type ArSteuerung = {
 export type ArMeldungen = {
   aufPlatte?: () => void
   aufEnde?: () => void
-  // Meldet, ob das Gerät wirklich Tiefendaten liefert
-  aufTiefe?: (moeglich: boolean) => void
+  // Laufende Klartext-Meldung zum Zustand der Verdeckung
+  aufTiefe?: (text: string) => void
 }
 
 export type ArOptionen = {
@@ -167,6 +167,7 @@ export async function starteBauenAr(
   let tiefenTextur: InstanceType<typeof THREE.DataTexture> | null = null
   let tiefeGemeldet = false
   let tiefeKaputt = false
+  let letzteTiefeMeldung = ""
 
   const szene = new THREE.Scene()
   const kamera = new THREE.PerspectiveCamera()
@@ -697,15 +698,31 @@ export async function starteBauenAr(
 
   // Liest das Tiefenbild des Geräts und legt es allen Block-Shadern
   // hin. ARCore liefert pro Bildpunkt Millimeter in zwei Bytes.
+  function melde(text: string) {
+    if (text === letzteTiefeMeldung) return
+    letzteTiefeMeldung = text
+    meldungen.aufTiefe?.(text)
+  }
+
   function pflegeVerdeckung(frame: XRFrame | undefined) {
     if (!optionen.verdeckung || tiefeKaputt) return
-    if (!tiefeGemeldet) {
-      tiefeGemeldet = true
-      meldungen.aufTiefe?.(tiefeMoeglich(session as never))
-    }
+    tiefeGemeldet = true
     const werte = TIEFE_UNIFORMS.tiefeWerte.value
     werte[1] = 0
-    if (!frame || !tiefeMoeglich(session as never)) return
+    const sitzung = session as unknown as {
+      enabledFeatures?: readonly string[]
+      depthUsage?: string
+      depthDataFormat?: string
+    }
+    if (!sitzung.enabledFeatures?.includes("depth-sensing")) {
+      melde("Tiefe: vom Gerät nicht freigegeben")
+      return
+    }
+    if (!tiefeMoeglich(session as never)) {
+      melde(`Tiefe: falscher Modus (${sitzung.depthUsage ?? "?"})`)
+      return
+    }
+    if (!frame) return
     try {
       const referenz = renderer.xr.getReferenceSpace()
       if (!referenz) return
@@ -724,9 +741,15 @@ export async function starteBauenAr(
           getDepthInformation?: (sicht: XRView) => CpuTiefe | null
         }
       ).getDepthInformation
-      if (typeof holen !== "function") return
+      if (typeof holen !== "function") {
+        melde("Tiefe: getDepthInformation fehlt")
+        return
+      }
       const info = holen.call(frame, sicht)
-      if (!info || !info.width || !info.height) return
+      if (!info || !info.width || !info.height) {
+        melde("Tiefe: keine Daten in diesem Bild")
+        return
+      }
 
       const bytes = new Uint8Array(info.data)
       if (
@@ -765,12 +788,13 @@ export async function starteBauenAr(
       }
       werte[0] = info.rawValueToMeters
       werte[1] = 1
-    } catch {
+      melde(`Tiefe aktiv · ${info.width}×${info.height}`)
+    } catch (fehler) {
       // Ein einziger Fehlversuch darf die Sitzung nicht kippen —
       // Verdeckung bleibt dann für diese Sitzung einfach aus.
       tiefeKaputt = true
       werte[1] = 0
-      meldungen.aufTiefe?.(false)
+      melde(`Tiefe: Fehler — ${String(fehler).slice(0, 60)}`)
     }
   }
 

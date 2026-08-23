@@ -22,7 +22,6 @@ import {
   zaehleSlots,
 } from "@/lib/inventar"
 import { berechneStrom, istSchaltbar } from "@/lib/redstone"
-import { tiefeHinweis } from "@/lib/tiefe"
 import { useBauen } from "../useBauen"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
@@ -71,6 +70,8 @@ export function BauenPlatte() {
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
   const [lebensgross, setLebensgross] = useState(false)
   const [verdeckung, setVerdeckung] = useState(false)
+  // Klartext-Zustand der AR-Verdeckung, dauerhaft im HUD sichtbar
+  const [tiefeStatus, setTiefeStatus] = useState("")
 
   useEffect(() => {
     setLebensgross(
@@ -353,7 +354,7 @@ export function BauenPlatte() {
                 ? "Lauf einfach hinein — die Blöcke stehen in echter Grösse um dich."
                 : "Tippe dorthin, wo der Block hin soll — nicht in die Bildmitte.",
             ),
-          aufTiefe: (moeglich) => setHinweis(tiefeHinweis(moeglich, true)),
+          aufTiefe: (text) => setTiefeStatus(text),
           aufEnde: () => {
             sitzung.current = null
             setArStatus("bereit")
@@ -499,6 +500,9 @@ export function BauenPlatte() {
               {verdeckung ? "✓ Verdeckung" : "Verdeckung"}
             </button>
           </div>
+        ) : null}
+        {arStatus === "an" && verdeckung && tiefeStatus ? (
+          <p className="mc-tiefe-status">{tiefeStatus}</p>
         ) : null}
         {arStatus === "an" ? (
           <button
