@@ -121,6 +121,8 @@ export function BauenPlatte() {
         ? `Abbauen · ${wahlName ?? "Spitzhacke"}`
         : aktion === "abbauen" && wahl && istSchaufel(wahl)
           ? `Graben · ${wahlName ?? "Schaufel"}`
+          : aktion === "abbauen" && wahl === "schere"
+          ? "Schneiden · Schere"
           : aktion === "abbauen" && wahl === "hacke"
             ? "Pflügen · Hacke"
             : aktion === "abbauen" && wahl === "axt"
@@ -138,7 +140,12 @@ export function BauenPlatte() {
           (slots[wahlIndex]?.anzahl ?? 0) > 0,
       ),
     werkzeug: () =>
-      wahl && (istPickel(wahl) || istSchaufel(wahl) || wahl === "axt" || wahl === "hacke")
+      wahl &&
+      (istPickel(wahl) ||
+        istSchaufel(wahl) ||
+        wahl === "axt" ||
+        wahl === "hacke" ||
+        wahl === "schere")
         ? wahl
         : null,
     bloecke: () => bloecke,
@@ -157,7 +164,12 @@ export function BauenPlatte() {
           (slots[wahlIndex]?.anzahl ?? 0) > 0,
       )
     steuerung.current.werkzeug = () =>
-      wahl && (istPickel(wahl) || istSchaufel(wahl) || wahl === "axt" || wahl === "hacke")
+      wahl &&
+      (istPickel(wahl) ||
+        istSchaufel(wahl) ||
+        wahl === "axt" ||
+        wahl === "hacke" ||
+        wahl === "schere")
         ? wahl
         : null
     steuerung.current.bloecke = () => bloecke
@@ -210,7 +222,7 @@ export function BauenPlatte() {
       return true
     }
     nimmWeg(blockId)
-    const drops = ernteDrops(weg.gegenstandId, abbauDrop)
+    const drops = ernteDrops(weg.gegenstandId, abbauDrop, Math.random, werkzeug)
     // Pflanzen direkt darüber verlieren ihren Boden und poppen mit ab
     const pflanzeOben = bloecke.find(
       (block) =>
@@ -221,12 +233,17 @@ export function BauenPlatte() {
     )
     if (pflanzeOben) {
       nimmWeg(pflanzeOben.id)
-      drops.push(...ernteDrops(pflanzeOben.gegenstandId, abbauDrop))
+      drops.push(
+        ...ernteDrops(pflanzeOben.gegenstandId, abbauDrop, Math.random, werkzeug),
+      )
     }
     const gelegt = legeBeuteInSlotsMitRest(slots, drops)
     if (gelegt.rest.length > 0) stasheBeute(gelegt.rest)
     let nextSlots = gelegt.slots
-    if (werkzeug && (istPickel(werkzeug) || istSchaufel(werkzeug))) {
+    if (
+      werkzeug &&
+      (istPickel(werkzeug) || istSchaufel(werkzeug) || werkzeug === "schere")
+    ) {
       const max = maximumFuer(werkzeug)
       const bisher = haltbarkeitFuer(werkzeug)
       const bar = bisher > 0 ? bisher : max
@@ -236,9 +253,11 @@ export function BauenPlatte() {
         nextSlots = nimmAnzahl(nextSlots, werkzeug, 1) ?? nextSlots
         spieleHaptik("zerbrochen")
         setHinweis(
-          istSchaufel(werkzeug)
-            ? "Die Schaufel ist zerbrochen."
-            : "Die Spitzhacke ist zerbrochen.",
+          werkzeug === "schere"
+            ? "Die Schere ist zerbrochen."
+            : istSchaufel(werkzeug)
+              ? "Die Schaufel ist zerbrochen."
+              : "Die Spitzhacke ist zerbrochen.",
         )
       } else {
         spieleHaptik("abbauen")

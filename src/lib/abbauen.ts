@@ -27,7 +27,12 @@ export function istSchaufel(id: string | null | undefined): boolean {
   return Boolean(id && SCHAUFEL_ARTEN[id])
 }
 
+// Schere: wie in Minecraft langlebig und das einzige Werkzeug,
+// das Laub als Block erntet.
+export const SCHERE_HALTBARKEIT = 238
+
 export function pickelHaltbarkeitFuer(id: string): number {
+  if (id === "schere") return SCHERE_HALTBARKEIT
   return (
     PICKEL_ARTEN[id]?.haltbarkeit ??
     SCHAUFEL_ARTEN[id]?.haltbarkeit ??
@@ -174,6 +179,9 @@ export function abbaudauerMs(
     ERDART.has(gegenstandId)
   ) {
     basis = SCHAUFEL_ARTEN[werkzeugId]!.ms
+  } else if (werkzeugId === "schere" && gegenstandId === "laub") {
+    // Die Schere schneidet Laub fast sofort durch
+    return 200
   } else if (werkzeugId === "axt" && HOLZART.has(gegenstandId)) {
     basis = AXT_MS
   }

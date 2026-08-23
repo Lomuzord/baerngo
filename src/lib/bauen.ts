@@ -38,7 +38,8 @@ export function istAbbauWerkzeug(gegenstandId: string): boolean {
     istPickel(gegenstandId) ||
     istSchaufel(gegenstandId) ||
     gegenstandId === "axt" ||
-    gegenstandId === "hacke"
+    gegenstandId === "hacke" ||
+    gegenstandId === "schere"
   )
 }
 

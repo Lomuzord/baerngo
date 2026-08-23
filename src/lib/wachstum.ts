@@ -128,6 +128,7 @@ export function ernteDrops(
   gegenstandId: string,
   abbauDrop: (id: string) => string,
   zufall: () => number = Math.random,
+  werkzeugId: string | null = null,
 ): { gegenstandId: string; anzahl: number }[] {
   if (gegenstandId === "wasser") return []
   if (gegenstandId === "weizen") {
@@ -135,6 +136,16 @@ export function ernteDrops(
       { gegenstandId: "weizen", anzahl: 1 },
       { gegenstandId: "samen", anzahl: zufall() < 0.5 ? 2 : 1 },
     ]
+  }
+  // Laub wie in Minecraft: nur die Schere bringt den Block selbst.
+  // Ohne Schere zerfällt es — manchmal fällt ein Setzling oder ein
+  // Stock heraus, meistens nichts.
+  if (gegenstandId === "laub") {
+    if (werkzeugId === "schere") return [{ gegenstandId: "laub", anzahl: 1 }]
+    const wurf = zufall()
+    if (wurf < 0.08) return [{ gegenstandId: "setzling", anzahl: 1 }]
+    if (wurf < 0.14) return [{ gegenstandId: "stock", anzahl: 1 }]
+    return []
   }
   return [{ gegenstandId: abbauDrop(gegenstandId), anzahl: 1 }]
 }

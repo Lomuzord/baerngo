@@ -80,6 +80,25 @@ describe("wendeWachstumAn", () => {
   })
 })
 
+describe("Laub ernten", () => {
+  it("only yields the leaf block with shears", () => {
+    expect(ernteDrops("laub", abbauDrop, () => 0.5, "schere")).toEqual([
+      { gegenstandId: "laub", anzahl: 1 },
+    ])
+  })
+
+  it("without shears mostly gives nothing, sometimes a sapling or stick", () => {
+    expect(ernteDrops("laub", abbauDrop, () => 0.02)).toEqual([
+      { gegenstandId: "setzling", anzahl: 1 },
+    ])
+    expect(ernteDrops("laub", abbauDrop, () => 0.1)).toEqual([
+      { gegenstandId: "stock", anzahl: 1 },
+    ])
+    expect(ernteDrops("laub", abbauDrop, () => 0.5)).toEqual([])
+    expect(ernteDrops("laub", abbauDrop, () => 0.5, "axt")).toEqual([])
+  })
+})
+
 describe("ernteDrops", () => {
   it("gives wheat plus seeds for wheat, nothing for water, defaults otherwise", () => {
     const weizen = ernteDrops("weizen", abbauDrop, () => 0.9)

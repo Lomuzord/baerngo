@@ -112,3 +112,13 @@ describe("schaufel", () => {
     expect(abbauDrop("ackerboden")).toBe("erde")
   })
 })
+
+describe("schere", () => {
+  it("cuts leaves almost instantly and is long-lasting", () => {
+    expect(abbaudauerMs("laub", "schere")).toBe(200)
+    expect(abbaudauerMs("laub", "schere")).toBeLessThan(
+      abbaudauerMs("laub", null),
+    )
+    expect(pickelHaltbarkeitFuer("schere")).toBe(238)
+  })
+})
