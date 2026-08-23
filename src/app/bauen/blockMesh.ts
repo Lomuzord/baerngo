@@ -10,7 +10,10 @@ export async function materialFuerBlock(
   const treffer = cache.get(gegenstandId)
   if (treffer) return treffer as InstanceType<typeof THREE.MeshStandardMaterial>
 
-  const url = gegenstandById(gegenstandId)?.textur ?? "/bloecke/erde.png"
+  const url =
+    VARIANTEN_TEXTUR[gegenstandId] ??
+    gegenstandById(gegenstandId)?.textur ??
+    "/bloecke/erde.png"
   const textur = await new THREE.TextureLoader().loadAsync(url)
   textur.magFilter = THREE.NearestFilter
   textur.minFilter = THREE.NearestFilter
@@ -30,6 +33,24 @@ export async function materialFuerBlock(
 }
 
 const DURCHBROCHEN = new Set(["leiter", "setzling", "samen", "weizen"])
+
+// "an"-Zustände von Redstone-Bauteilen — eigene Texturen, aber keine
+// eigenen Inventar-Gegenstände.
+const VARIANTEN_TEXTUR: Record<string, string> = {
+  "redstone-an": "/bloecke/redstone-an.png",
+  "hebel-an": "/bloecke/hebel-an.png",
+  "redstonelampe-an": "/bloecke/redstonelampe-an.png",
+}
+
+// Welche Textur ein Block gerade trägt — stromführende Redstone-Teile
+// wechseln auf ihre helle Variante.
+export function anzeigeArt(gegenstandId: string, unterStrom: boolean): string {
+  if (!unterStrom) return gegenstandId
+  if (gegenstandId === "redstone") return "redstone-an"
+  if (gegenstandId === "hebel") return "hebel-an"
+  if (gegenstandId === "redstonelampe") return "redstonelampe-an"
+  return gegenstandId
+}
 
 // Formteile: Stufen und Treppen sind keine vollen Würfel — sie
 // bestehen aus Quadern relativ zur Zellenmitte (Anteile der Kante).
@@ -55,6 +76,20 @@ const FORMEN: Record<
     { x: 0, y: -0.2, z: 0, w: 0.98, h: 0.14, t: 0.14 },
   ],
   leiter: [{ x: 0, y: 0, z: -0.44, w: 0.98, h: 0.98, t: 0.1 }],
+  redstone: [{ x: 0, y: -0.46, z: 0, w: 0.9, h: 0.06, t: 0.9 }],
+  hebel: [
+    { x: 0, y: -0.42, z: 0, w: 0.5, h: 0.14, t: 0.34 },
+    { x: 0, y: -0.16, z: 0, w: 0.14, h: 0.44, t: 0.14 },
+  ],
+  knopf: [{ x: 0, y: -0.38, z: 0, w: 0.42, h: 0.22, t: 0.3 }],
+  redstonefackel: [
+    { x: 0, y: -0.22, z: 0, w: 0.16, h: 0.55, t: 0.16 },
+    { x: 0, y: 0.1, z: 0, w: 0.24, h: 0.22, t: 0.24 },
+  ],
+  fackel: [
+    { x: 0, y: -0.22, z: 0, w: 0.16, h: 0.55, t: 0.16 },
+    { x: 0, y: 0.1, z: 0, w: 0.24, h: 0.22, t: 0.24 },
+  ],
   setzling: [{ x: 0, y: -0.2, z: 0, w: 0.4, h: 0.58, t: 0.4 }],
   samen: [{ x: 0, y: -0.4, z: 0, w: 0.7, h: 0.18, t: 0.7 }],
   weizen: [{ x: 0, y: -0.1, z: 0, w: 0.86, h: 0.78, t: 0.86 }],
@@ -78,7 +113,7 @@ export function geometrieFuerBlock(
   gegenstandId: string,
   kante: number,
 ) {
-  const teile = FORMEN[gegenstandId]
+  const teile = FORMEN[gegenstandId.replace(/-an$/, "")]
   if (!teile) {
     return new THREE.BoxGeometry(kante * 0.98, kante * 0.98, kante * 0.98)
   }

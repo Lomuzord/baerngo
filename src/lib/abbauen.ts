@@ -85,6 +85,8 @@ const STEINART = new Set([
   "bernwappen",
   "eisenblock",
   "glasscheibe",
+  "redstoneerz",
+  "redstonelampe",
   "steinstufe",
   "steintreppe",
 ])
@@ -138,6 +140,12 @@ const HAERTE: Record<string, number> = {
   zaun: 0.9,
   leiter: 0.5,
   wolle: 0.8,
+  redstoneerz: 1.9,
+  redstone: 0.2,
+  hebel: 0.3,
+  knopf: 0.3,
+  redstonefackel: 0.2,
+  redstonelampe: 0.6,
 }
 
 

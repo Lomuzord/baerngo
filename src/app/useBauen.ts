@@ -49,6 +49,17 @@ export function useBauen() {
     })
   }, [])
 
+  // Hebel/Knopf ein- oder ausschalten
+  const setzeAn = useCallback((blockId: string, an: boolean) => {
+    setBloecke((bisher) => {
+      const danach = bisher.map((block) =>
+        block.id === blockId ? { ...block, an: an || undefined } : block,
+      )
+      schreibeBloecke(danach)
+      return danach
+    })
+  }, [])
+
   const nimmWeg = useCallback((blockId: string) => {
     setBloecke((bisher) => {
       const danach = nimmBlock(bisher, blockId)
@@ -57,7 +68,7 @@ export function useBauen() {
     })
   }, [])
 
-  return { bloecke, setze, nimmWeg, ersetze }
+  return { bloecke, setze, nimmWeg, ersetze, setzeAn }
 }
 
 function leseBloecke(): GesetzterBlock[] {

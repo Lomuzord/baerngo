@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   abbauDrop,
   anzeigeHaltbarkeit,
@@ -21,6 +21,7 @@ import {
   nimmVonIndex,
   zaehleSlots,
 } from "@/lib/inventar"
+import { berechneStrom, istSchaltbar } from "@/lib/redstone"
 import { useBauen } from "../useBauen"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
@@ -33,7 +34,37 @@ export function BauenPlatte() {
   const overlay = useRef<HTMLDivElement>(null)
   const sitzung = useRef<{ beenden: () => void } | null>(null)
   const { slots, inventar, setzeSlots } = useInventar()
-  const { bloecke, setze, nimmWeg, ersetze } = useBauen()
+  const { bloecke, setze, nimmWeg, ersetze, setzeAn } = useBauen()
+  // Redstone-Signal aus dem aktuellen Bauwerk
+  const strom = useMemo(() => berechneStrom(bloecke), [bloecke])
+  const stromRef = useRef(strom)
+  stromRef.current = strom
+  const knopfTimer = useRef<Map<string, number>>(new Map())
+  useEffect(() => {
+    const timer = knopfTimer.current
+    return () => {
+      for (const id of timer.values()) window.clearTimeout(id)
+    }
+  }, [])
+
+  function schalte(blockId: string): boolean {
+    const block = bloecke.find((eintrag) => eintrag.id === blockId)
+    if (!block || !istSchaltbar(block.gegenstandId)) return false
+    if (block.gegenstandId === "knopf") {
+      // Knopf: kurzer Puls wie in Minecraft
+      setzeAn(blockId, true)
+      spieleHaptik("wahl")
+      window.clearTimeout(knopfTimer.current.get(blockId))
+      knopfTimer.current.set(
+        blockId,
+        window.setTimeout(() => setzeAn(blockId, false), 1500),
+      )
+      return true
+    }
+    setzeAn(blockId, !block.an)
+    spieleHaptik("wahl")
+    return true
+  }
   const { haltbarkeitFuer, setzeHaltbarkeitFuer, maximumFuer } = usePickel()
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
@@ -161,6 +192,8 @@ export function BauenPlatte() {
     }
     steuerung.current.aufSchlag = (blockId) =>
       schlageGesetzt(blockId, steuerung.current.werkzeug())
+    steuerung.current.stromAn = () => stromRef.current
+    steuerung.current.aufSchalte = (blockId) => schalte(blockId)
   })
 
   function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {

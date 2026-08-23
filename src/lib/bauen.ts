@@ -16,6 +16,8 @@ export type GesetzterBlock = {
   // Wann der Block gesetzt wurde — Setzlinge und Samen wachsen
   // daraus nach echter Zeit heran.
   gesetztUm?: number
+  // Für schaltbare Redstone-Blöcke (Hebel, Knopf): eingeschaltet?
+  an?: boolean
 }
 
 export function neuerBlock(
@@ -183,7 +185,8 @@ function parseBlock(roh: unknown): GesetzterBlock | undefined {
     "gesetztUm" in roh && typeof roh.gesetztUm === "number"
       ? roh.gesetztUm
       : undefined
-  return { id, gegenstandId: roh.gegenstandId, zelle: roh.zelle, gesetztUm }
+  const an = "an" in roh && roh.an === true ? true : undefined
+  return { id, gegenstandId: roh.gegenstandId, zelle: roh.zelle, gesetztUm, an }
 }
 
 function istZelle(wert: unknown): wert is Zelle {

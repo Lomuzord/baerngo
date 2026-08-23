@@ -25,7 +25,8 @@ import {
   type Ebene,
   type Zelle,
 } from "@/lib/spielflaeche"
-import { geometrieFuerBlock,
+import { anzeigeArt,
+  geometrieFuerBlock,
   entferneRiss,
   materialFuerBlock,
   materialienFuerWuerfel,
@@ -42,6 +43,8 @@ export type ArSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
+  stromAn?: () => Set<string>
+  aufSchalte?: (blockId: string) => boolean
 }
 
 export type ArMeldungen = {
@@ -282,6 +285,16 @@ export async function starteBauenAr(
         wuerfel.set(block.id, mesh)
       }
       mesh.userData.zelle = block.zelle
+      // Redstone-Optik auch in AR: Leuchten und offene Türen
+      const strom = steuerung.stromAn?.() ?? new Set<string>()
+      const artJetzt = anzeigeArt(block.gegenstandId, strom.has(block.id))
+      if (mesh.userData.artJetzt !== artJetzt) {
+        mesh.userData.artJetzt = artJetzt
+        mesh.material = await materialienFuerWuerfel(THREE, artJetzt)
+      }
+      if (block.gegenstandId === "tuer") {
+        mesh.rotation.y = strom.has(block.id) ? 1.25 : 0
+      }
       const pose = poseVonZelle(block.zelle, ebene)
       const startY =
         neu && block.fallStart

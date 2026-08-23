@@ -21,6 +21,7 @@ const SCHMELZE: readonly Schmelzrezept[] = [
   { eingabe: "golderz", ausgabe: "gold", ausgabeAnzahl: 1 },
   { eingabe: "kohleerz", ausgabe: "kohle", ausgabeAnzahl: 1 },
   { eingabe: "diamanterz", ausgabe: "diamant", ausgabeAnzahl: 1 },
+  { eingabe: "redstoneerz", ausgabe: "redstone", ausgabeAnzahl: 3 },
   { eingabe: "bruchstein", ausgabe: "stein", ausgabeAnzahl: 1 },
   { eingabe: "lehm", ausgabe: "ziegel", ausgabeAnzahl: 1 },
   { eingabe: "stamm", ausgabe: "kohle", ausgabeAnzahl: 1 },

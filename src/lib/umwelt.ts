@@ -26,6 +26,7 @@ const POOLS: Record<Umwelt, readonly string[]> = {
     "kohleerz",
     "kohleerz",
     "eisenerz",
+    "redstoneerz",
     "diamanterz",
   ],
   wasser: ["kies", "sand", "lehm"],

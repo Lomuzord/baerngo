@@ -19,7 +19,8 @@ import {
   zelleVonPose,
   type Zelle,
 } from "@/lib/spielflaeche"
-import { geometrieFuerBlock,
+import { anzeigeArt,
+  geometrieFuerBlock,
   entferneRiss,
   materialFuerBlock,
   materialienFuerWuerfel,
@@ -36,6 +37,9 @@ export type PlattenSteuerung = {
   abbau: () => AbbauStand
   aufSetzen: (zelle: Zelle) => void
   aufSchlag: (blockId: string) => boolean
+  // Redstone: welche Blöcke stehen unter Strom, Hebel/Knopf antippen
+  stromAn?: () => Set<string>
+  aufSchalte?: (blockId: string) => boolean
 }
 
 export async function startePlattenSzene(
@@ -182,6 +186,16 @@ export async function startePlattenSzene(
         wuerfel.set(block.id, mesh)
       }
       mesh.userData.zelle = block.zelle
+      // Redstone-Optik: stromführende Teile leuchten, Türen öffnen
+      const strom = steuerung.stromAn?.() ?? new Set<string>()
+      const artJetzt = anzeigeArt(block.gegenstandId, strom.has(block.id))
+      if (mesh.userData.artJetzt !== artJetzt) {
+        mesh.userData.artJetzt = artJetzt
+        mesh.material = await materialienFuerWuerfel(THREE, artJetzt)
+      }
+      if (block.gegenstandId === "tuer") {
+        mesh.rotation.y = strom.has(block.id) ? 1.25 : 0
+      }
       const pose = poseVonZelle(block.zelle, TISCH_EBENE)
       const startY =
         neu && block.fallStart
@@ -314,6 +328,13 @@ export async function startePlattenSzene(
     if (hatGezogen || hatGehalten) return
     const hit = trefferBei(event.clientX, event.clientY)
     if (!hit) return
+    // Hebel und Knopf werden per Tipp geschaltet — auch mit Block in
+    // der Hand, wie das Rechtsklick-Verhalten in Minecraft.
+    const direktId = hit.object.userData.blockId as string | undefined
+    if (direktId && steuerung.aufSchalte?.(direktId)) {
+      void zeichneBloecke()
+      return
+    }
     if (aktionFuerHand(steuerung.wahl()) !== "setzen" || !steuerung.kannSetzen()) {
       return
     }
@@ -396,7 +417,7 @@ export async function startePlattenSzene(
       .bloecke()
       .map(
         (block) =>
-          `${block.id}:${block.zelle.ix},${block.zelle.iy},${block.zelle.iz}`,
+          `${block.id}:${block.zelle.ix},${block.zelle.iy},${block.zelle.iz}:${block.an ? 1 : 0}`,
       )
       .join(",")}|${JSON.stringify(steuerung.abbau())}|${steuerung.werkzeug()}`
     if (jetzt !== signatur) {
