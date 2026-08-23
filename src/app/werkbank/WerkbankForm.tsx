@@ -17,6 +17,8 @@ import {
   klickOfen,
   leererOfen,
   ofenInBeute,
+  SCHMELZ_DAUER_MS,
+  tickOfen,
   type OfenStand,
 } from "@/lib/ofen"
 import {
@@ -89,7 +91,27 @@ export function WerkbankForm() {
         | string
         | null
       )[])
+  // Der Ofen läuft in Echtzeit weiter — auch während man zuschaut.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setOfen((bisher) => {
+        const danach = tickOfen(bisher, 250)
+        ofenRef.current = danach
+        return danach
+      })
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const vorrat = vorratJetzt(slots, raster, cursor, ofen)
+  const feuerAnteil =
+    ofen.brandGesamtMs && ofen.brandRestMs
+      ? Math.max(0, Math.min(1, ofen.brandRestMs / ofen.brandGesamtMs))
+      : 0
+  const schmelzAnteil = Math.max(
+    0,
+    Math.min(1, (ofen.schmelzMs ?? 0) / SCHMELZ_DAUER_MS),
+  )
   const geht = kannRezept(vorrat, leeresRaster(), rezeptId)
   const fehltListe = rezept
     ? fehlendeZutaten(vorrat, leeresRaster(), rezept.id)
@@ -267,6 +289,24 @@ export function WerkbankForm() {
             <img src="/bloecke/ofen.png" alt="" className="mc-ofen-icon" />
             <div className="mc-ofen-feuer">
               {ofenFachKnopf("eingabe", 20, ofen.eingabe, "Erz / Stamm", tippeRaster)}
+              <span
+                className="mc-ofen-flamme"
+                aria-label={
+                  feuerAnteil > 0 ? "Ofen brennt" : "Ofen ist aus"
+                }
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/bloecke/flamme-aus.png" alt="" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/bloecke/flamme.png"
+                  alt=""
+                  className="mc-ofen-flamme-an"
+                  style={{
+                    clipPath: `inset(${(1 - feuerAnteil) * 100}% 0 0 0)`,
+                  }}
+                />
+              </span>
               {ofenFachKnopf(
                 "brennstoff",
                 21,
@@ -275,7 +315,17 @@ export function WerkbankForm() {
                 tippeRaster,
               )}
             </div>
-            <span className="mc-arrow">→</span>
+            <span className="mc-ofen-pfeil" aria-label="Schmelz-Fortschritt">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/bloecke/pfeil-aus.png" alt="" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/bloecke/pfeil.png"
+                alt=""
+                className="mc-ofen-pfeil-voll"
+                style={{ clipPath: `inset(0 ${(1 - schmelzAnteil) * 100}% 0 0)` }}
+              />
+            </span>
             {ofenFachKnopf("ausgabe", 22, ofen.ausgabe, "Raus", tippeRaster, true)}
           </div>
         ) : (

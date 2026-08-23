@@ -1,38 +1,110 @@
 import { describe, expect, it } from "vitest"
-import { klickOfen, leererOfen, schmelzrezeptFuer, treibeOfen } from "./ofen"
+import {
+  brennwertMs,
+  klickOfen,
+  leererOfen,
+  SCHMELZ_DAUER_MS,
+  schmelzrezeptFuer,
+  tickOfen,
+  type OfenStand,
+} from "./ofen"
 
-describe("treibeOfen", () => {
-  it("smelts sand with coal into glass and iron ore into iron", () => {
+describe("tickOfen", () => {
+  it("smelts one sand into glass after 10 seconds of coal fire", () => {
     expect(schmelzrezeptFuer("sand")?.ausgabe).toBe("glas")
-    const glas = treibeOfen({
+    let stand: OfenStand = {
       eingabe: { id: "sand", anzahl: 2 },
       brennstoff: { id: "kohle", anzahl: 1 },
       ausgabe: null,
-    })
-    expect(glas.ausgabe).toEqual({ id: "glas", anzahl: 1 })
-    expect(glas.eingabe).toEqual({ id: "sand", anzahl: 1 })
-    expect(glas.brennstoff).toBeNull()
+    }
+    stand = tickOfen(stand, SCHMELZ_DAUER_MS / 2)
+    expect(stand.ausgabe).toBeNull()
+    expect(stand.brennstoff).toBeNull() // Kohle ist angezündet
+    expect(stand.brandRestMs).toBeGreaterThan(0)
+    stand = tickOfen(stand, SCHMELZ_DAUER_MS / 2)
+    expect(stand.ausgabe).toEqual({ id: "glas", anzahl: 1 })
+    expect(stand.eingabe).toEqual({ id: "sand", anzahl: 1 })
+  })
 
-    const holzFeuer = treibeOfen({
+  it("one coal smelts 8 items like Minecraft", () => {
+    let stand: OfenStand = {
+      eingabe: { id: "sand", anzahl: 10 },
+      brennstoff: { id: "kohle", anzahl: 1 },
+      ausgabe: null,
+    }
+    stand = tickOfen(stand, 8 * SCHMELZ_DAUER_MS)
+    expect(stand.ausgabe).toEqual({ id: "glas", anzahl: 8 })
+    expect(stand.eingabe).toEqual({ id: "sand", anzahl: 2 })
+    // Feuer ist aus, das neunte Stück kommt nicht mehr
+    stand = tickOfen(stand, 5 * SCHMELZ_DAUER_MS)
+    expect(stand.ausgabe?.anzahl).toBe(8)
+  })
+
+  it("planks burn 1.5 smelts, a stick only half", () => {
+    expect(brennwertMs("holz")).toBe(1.5 * SCHMELZ_DAUER_MS)
+    expect(brennwertMs("stock")).toBe(0.5 * SCHMELZ_DAUER_MS)
+    expect(brennwertMs("kohle")).toBe(8 * SCHMELZ_DAUER_MS)
+    // Ein Stock allein bringt kein Stück fertig …
+    let stand: OfenStand = {
       eingabe: { id: "sand", anzahl: 1 },
-      brennstoff: { id: "holz", anzahl: 1 },
+      brennstoff: { id: "stock", anzahl: 1 },
       ausgabe: null,
-    })
-    expect(holzFeuer.ausgabe).toEqual({ id: "glas", anzahl: 1 })
-
-    const eisen = treibeOfen({
-      eingabe: { id: "eisenerz", anzahl: 1 },
-      brennstoff: { id: "stamm", anzahl: 1 },
+    }
+    stand = tickOfen(stand, 2 * SCHMELZ_DAUER_MS)
+    expect(stand.ausgabe).toBeNull()
+    // … zwei Stöcke schon
+    let voll: OfenStand = {
+      eingabe: { id: "sand", anzahl: 1 },
+      brennstoff: { id: "stock", anzahl: 2 },
       ausgabe: null,
-    })
-    expect(eisen.ausgabe).toEqual({ id: "eisen", anzahl: 1 })
-    expect(eisen.eingabe).toBeNull()
+    }
+    voll = tickOfen(voll, SCHMELZ_DAUER_MS + 1)
+    expect(voll.ausgabe).toEqual({ id: "glas", anzahl: 1 })
   })
 
-  it("smelts cobblestone back into stone", () => {
-    expect(schmelzrezeptFuer("bruchstein")?.ausgabe).toBe("stein")
+  it("does not light fuel with nothing to smelt, and progress decays without fire", () => {
+    let leerlauf: OfenStand = {
+      eingabe: null,
+      brennstoff: { id: "kohle", anzahl: 3 },
+      ausgabe: null,
+    }
+    leerlauf = tickOfen(leerlauf, 60_000)
+    expect(leerlauf.brennstoff).toEqual({ id: "kohle", anzahl: 3 })
+
+    // Halb geschmolzen, Feuer aus → Fortschritt fällt zurück
+    let abkuehlung: OfenStand = {
+      eingabe: { id: "sand", anzahl: 1 },
+      brennstoff: null,
+      ausgabe: null,
+      brandRestMs: 0,
+      schmelzMs: SCHMELZ_DAUER_MS / 2,
+    }
+    abkuehlung = tickOfen(abkuehlung, 2_000)
+    expect(abkuehlung.schmelzMs).toBe(SCHMELZ_DAUER_MS / 2 - 4_000)
+    expect(abkuehlung.ausgabe).toBeNull()
   })
 
+  it("stacks output and stalls when the output would overflow", () => {
+    let stand: OfenStand = {
+      eingabe: { id: "redstoneerz", anzahl: 2 },
+      brennstoff: { id: "kohle", anzahl: 1 },
+      ausgabe: null,
+    }
+    stand = tickOfen(stand, 2 * SCHMELZ_DAUER_MS + 1)
+    expect(stand.ausgabe).toEqual({ id: "redstone", anzahl: 6 })
+
+    let voll: OfenStand = {
+      eingabe: { id: "sand", anzahl: 1 },
+      brennstoff: { id: "kohle", anzahl: 1 },
+      ausgabe: { id: "glas", anzahl: 64 },
+    }
+    voll = tickOfen(voll, 5 * SCHMELZ_DAUER_MS)
+    expect(voll.ausgabe?.anzahl).toBe(64)
+    expect(voll.brennstoff).toEqual({ id: "kohle", anzahl: 1 })
+  })
+})
+
+describe("klickOfen", () => {
   it("refuses non-fuel in the fuel slot even when fuel is already there", () => {
     const stand = {
       eingabe: null,
@@ -55,13 +127,7 @@ describe("treibeOfen", () => {
     expect(dazu.cursor).toEqual({ id: "sand", anzahl: 6 })
   })
 
-  it("does not smelt without fuel and lets you take the result", () => {
-    const kalt = treibeOfen({
-      eingabe: { id: "sand", anzahl: 1 },
-      brennstoff: null,
-      ausgabe: null,
-    })
-    expect(kalt.ausgabe).toBeNull()
+  it("lets you take the result", () => {
     const genommen = klickOfen(
       {
         eingabe: null,
