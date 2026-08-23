@@ -777,18 +777,36 @@ export async function starteBauenAr(
       tiefenTextur.needsUpdate = true
 
       TIEFE_UNIFORMS.tiefeUv.value.set(info.normDepthBufferFromNormView.matrix)
-      const schicht = session.renderState.baseLayer
-      const feld = schicht?.getViewport(sicht)
+      // Sichtfeld: Chrome nutzt eine Projektions-Ebene, dann ist
+      // renderState.baseLayer LEER. Die XR-Kamera von three kennt das
+      // echte Feld in jedem Fall — sie ist die verlässliche Quelle.
       const ziel = TIEFE_UNIFORMS.tiefeFeld.value
-      if (feld && feld.width > 0 && feld.height > 0) {
-        ziel[0] = feld.x
-        ziel[1] = feld.y
-        ziel[2] = feld.width
-        ziel[3] = feld.height
+      const xrKamera = renderer.xr.getCamera() as unknown as {
+        cameras?: { viewport?: { x: number; y: number; z: number; w: number } }[]
+      }
+      const sichtFeld = xrKamera.cameras?.[0]?.viewport
+      const ausEbene = session.renderState.baseLayer?.getViewport(sicht)
+      if (sichtFeld && sichtFeld.z > 0 && sichtFeld.w > 0) {
+        ziel[0] = sichtFeld.x
+        ziel[1] = sichtFeld.y
+        ziel[2] = sichtFeld.z
+        ziel[3] = sichtFeld.w
+      } else if (ausEbene && ausEbene.width > 0 && ausEbene.height > 0) {
+        ziel[0] = ausEbene.x
+        ziel[1] = ausEbene.y
+        ziel[2] = ausEbene.width
+        ziel[3] = ausEbene.height
+      } else {
+        melde("Tiefe: kein Sichtfeld gefunden")
+        return
       }
       werte[0] = info.rawValueToMeters
       werte[1] = 1
-      melde(`Tiefe aktiv · ${info.width}×${info.height}`)
+      melde(
+        `Tiefe aktiv · ${info.width}×${info.height} · Feld ${Math.round(
+          ziel[2],
+        )}×${Math.round(ziel[3])}`,
+      )
     } catch (fehler) {
       // Ein einziger Fehlversuch darf die Sitzung nicht kippen —
       // Verdeckung bleibt dann für diese Sitzung einfach aus.
