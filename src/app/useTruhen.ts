@@ -40,6 +40,10 @@ export function useTruhen() {
   }, [stand, jetzt])
 
   const entsperre = useCallback((id: string) => {
+    // Wichtig: die Vergleichszeit mitziehen. Sonst liegt der frische
+    // Zeitstempel "in der Zukunft" gegenüber dem alten jetzt-Wert und
+    // die Truhe gilt sofort wieder als verschlossen.
+    setJetzt(Date.now())
     setStand((bisher) => {
       const danach = entsperreTruhe(bisher, id)
       standRef.current = danach
@@ -49,11 +53,13 @@ export function useTruhen() {
   }, [])
 
   const oeffne = useCallback((id: string) => {
-    const result = oeffneTruhe(standRef.current, id)
+    const jetztEcht = Date.now()
+    const result = oeffneTruhe(standRef.current, id, jetztEcht)
     if (!result.geoeffnet) return false
     meldeTagesEreignis("truhe", 1)
     standRef.current = result.stand
     schreibeTruhen(result.stand)
+    setJetzt(jetztEcht)
     setStand(result.stand)
     return true
   }, [])

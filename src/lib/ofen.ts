@@ -71,6 +71,7 @@ export function klickOfen(
   stand: OfenStand,
   fach: OfenFach,
   cursor: Cursor | null,
+  taste: "links" | "rechts" = "links",
 ): { stand: OfenStand; cursor: Cursor | null } {
   const danach = { ...stand }
   if (fach === "ausgabe") {
@@ -95,13 +96,22 @@ export function klickOfen(
     return { stand: danach, cursor }
   }
   if (!belegt) {
-    danach[fach] = { id: cursor.id, anzahl: cursor.anzahl }
-    return { stand: danach, cursor: null }
+    // "rechts" (kurzer Tipp) legt nur ein Stück ab
+    const lege =
+      taste === "rechts"
+        ? 1
+        : Math.min(cursor.anzahl, stapelMaximum(cursor.id))
+    const uebrig = cursor.anzahl - lege
+    danach[fach] = { id: cursor.id, anzahl: lege }
+    return {
+      stand: danach,
+      cursor: uebrig > 0 ? { id: cursor.id, anzahl: uebrig } : null,
+    }
   }
   if (belegt.id === cursor.id) {
     const platz = stapelMaximum(belegt.id) - belegt.anzahl
     if (platz <= 0) return { stand: danach, cursor }
-    const move = Math.min(platz, cursor.anzahl)
+    const move = taste === "rechts" ? 1 : Math.min(platz, cursor.anzahl)
     danach[fach] = { id: belegt.id, anzahl: belegt.anzahl + move }
     const rest = cursor.anzahl - move
     return {

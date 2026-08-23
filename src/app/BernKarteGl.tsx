@@ -32,6 +32,8 @@ import { bonusDrop } from "@/lib/sammeln"
 import { istTier, tierById, tierDrops } from "@/lib/tiere"
 import { BRUNNEN } from "@/lib/brunnen"
 import { useWanderweg } from "./useWanderweg"
+import { useTruhen } from "./useTruhen"
+import { formatiereTruhePause } from "@/lib/truhe"
 import {
   AUFGABEN_EREIGNIS,
   holeTagesBelohnung,
@@ -114,6 +116,8 @@ export function BernKarteGl({
   )
   const brunnenStandRef = useRef(brunnen)
   brunnenStandRef.current = brunnen
+  // Truhen-Pausen direkt auf der Karte zeigen
+  const { statusFuer: truheStatusFuer, restMsFuer: truheRestFuer } = useTruhen()
 
   // Tagesaufgaben: Stand lauscht auf Meldungen aus allen Spielpfaden
   const [aufgabenOffen, setAufgabenOffen] = useState(false)
@@ -460,6 +464,27 @@ export function BernKarteGl({
       wildMarker.current.delete(id)
     }
   }, [bloecke, spieler, karteBereit])
+
+  // Pause-Anzeige am Ort: Uhr mit Restzeit, solange die Truhe leer ist
+  useEffect(() => {
+    pins.current.forEach((el, id) => {
+      const rest = truheRestFuer(id)
+      const bereit = truheStatusFuer(id) === "bereit"
+      el.classList.toggle("mc-ort-pause", rest > 0)
+      el.classList.toggle("mc-ort-bereit", bereit)
+      let marke = el.querySelector<HTMLElement>(".mc-ort-pause-marke")
+      if (rest > 0) {
+        if (!marke) {
+          marke = document.createElement("span")
+          marke.className = "mc-ort-pause-marke"
+          el.appendChild(marke)
+        }
+        marke.textContent = `⏳ ${formatiereTruhePause(rest)}`
+      } else if (marke) {
+        marke.remove()
+      }
+    })
+  }, [truheStatusFuer, truheRestFuer])
 
   useEffect(() => {
     pins.current.forEach((el, id) => {

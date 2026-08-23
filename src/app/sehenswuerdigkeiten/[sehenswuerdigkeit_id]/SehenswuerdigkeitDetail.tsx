@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 import { fotoFuerSehenswuerdigkeit } from "@/lib/fotos"
 import { istInReichweite } from "@/lib/reichweite"
 import type { QuizOhneLoesung } from "@/lib/katalog"
@@ -38,6 +39,11 @@ export function SehenswuerdigkeitDetail({
   const truhe = statusFuer(id)
   const pauseRestMs = restMsFuer(id)
   const vorOrt = spieler.status === "bereit" && Boolean(reichweite?.erlaubt)
+  // Nach dem Leeren kurz die Beute zeigen und dann zurück zur Karte —
+  // dort steht die Pause am Ort selbst.
+  const [gehtZurueck, setGehtZurueck] = useState(false)
+  const rueckTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(rueckTimer.current), [])
 
   return (
     <main className="mc-panel">
@@ -98,11 +104,17 @@ export function SehenswuerdigkeitDetail({
           beute={beute}
           pauseRestMs={pauseRestMs}
           onOeffnen={() => {
-            if (oeffne(id)) {
-              sammleBeute(beute)
-            }
+            if (!oeffne(id)) return
+            sammleBeute(beute)
+            setGehtZurueck(true)
+            rueckTimer.current = window.setTimeout(() => {
+              router.push("/")
+            }, 2200)
           }}
         />
+      ) : null}
+      {gehtZurueck ? (
+        <p className="mc-tagline">Eingesammelt — zurück zur Karte …</p>
       ) : null}
     </main>
   )

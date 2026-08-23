@@ -142,3 +142,26 @@ describe("klickOfen", () => {
     expect(leererOfen().eingabe).toBeNull()
   })
 })
+
+describe("klickOfen mit Taste", () => {
+  it("places a single item on a short tap and the stack on a long press", () => {
+    const hand = { id: "kohle", anzahl: 9 }
+    const einer = klickOfen(leererOfen(), "brennstoff", hand, "rechts")
+    expect(einer.stand.brennstoff).toEqual({ id: "kohle", anzahl: 1 })
+    expect(einer.cursor).toEqual({ id: "kohle", anzahl: 8 })
+
+    const alle = klickOfen(leererOfen(), "brennstoff", hand, "links")
+    expect(alle.stand.brennstoff).toEqual({ id: "kohle", anzahl: 9 })
+    expect(alle.cursor).toBeNull()
+
+    // Auf einen bestehenden Stapel legt der kurze Tipp auch nur eines
+    const drauf = klickOfen(
+      { eingabe: null, brennstoff: { id: "kohle", anzahl: 2 }, ausgabe: null },
+      "brennstoff",
+      hand,
+      "rechts",
+    )
+    expect(drauf.stand.brennstoff).toEqual({ id: "kohle", anzahl: 3 })
+    expect(drauf.cursor).toEqual({ id: "kohle", anzahl: 8 })
+  })
+})

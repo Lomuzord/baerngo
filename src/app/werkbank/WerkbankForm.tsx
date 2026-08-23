@@ -117,7 +117,11 @@ export function WerkbankForm() {
     ? fehlendeZutaten(vorrat, leeresRaster(), rezept.id)
     : []
 
-  const legeAufRaster = useCallback((index: number, held: Cursor | null) => {
+  const legeAufRaster = useCallback((
+    index: number,
+    held: Cursor | null,
+    taste: "links" | "rechts" = "links",
+  ) => {
     // Zeitstempel statt setTimeout(0): synthetische Klicks können auf
     // Touch-Geräten deutlich später eintreffen und würden den Griff
     // sonst doppelt ausführen.
@@ -125,25 +129,47 @@ export function WerkbankForm() {
     if (index >= 20) {
       const fach = fachBeiIndex(index - 20)
       if (!fach) return held
-      const r = klickOfen(ofenRef.current, fach, held)
+      const r = klickOfen(ofenRef.current, fach, held, taste)
       ofenRef.current = r.stand
       cursorRef.current = r.cursor
       setOfen(r.stand)
       return r.cursor
     }
-    const r = klickRaster(rasterRef.current, index, held)
+    const r = klickRaster(rasterRef.current, index, held, taste)
     rasterRef.current = r.raster
     cursorRef.current = r.cursor
     setRaster(r.raster)
     return r.cursor
   }, [])
 
+  // Touch-Bedienung wie gewünscht: kurzer Tipp legt EIN Stück ab,
+  // langes Drücken den ganzen Stapel (und nimmt umgekehrt die Hälfte).
+  const haltenSeit = useRef(0)
+  const LANG_MS = 400
+
   function tippeRaster(index: number) {
     // Klicks kurz nach einem Pointer-Griff sind Duplikate; echte
     // Tastatur-Klicks (Enter auf dem Knopf) kommen ohne Pointer davor.
     if (performance.now() - skipRasterKlick.current < 600) return
-    const rest = legeAufRaster(index, cursorRef.current)
+    const taste = cursorRef.current ? "rechts" : "links"
+    const rest = legeAufRaster(index, cursorRef.current, taste)
     setCursor(rest)
+  }
+
+  function rasterZeigerRunter() {
+    haltenSeit.current = performance.now()
+  }
+
+  function rasterZeigerHoch(index: number) {
+    const lang = performance.now() - haltenSeit.current >= LANG_MS
+    haltenSeit.current = 0
+    skipRasterKlick.current = performance.now()
+    // Mit leerer Hand nimmt jeder Tipp den ganzen Stapel auf; nur beim
+    // Ablegen unterscheiden wir kurz (eines) und lang (alles).
+    const taste = !cursorRef.current || lang ? "links" : "rechts"
+    const rest = legeAufRaster(index, cursorRef.current, taste)
+    setCursor(rest)
+    if (lang && cursorRef.current) spieleHaptik("wahl")
   }
 
   function fuelleRezept(id: string) {
@@ -242,6 +268,11 @@ export function WerkbankForm() {
                     if (event.button === 2) return
                     event.preventDefault()
                     event.currentTarget.setPointerCapture(event.pointerId)
+                    rasterZeigerRunter()
+                  }}
+                  onPointerUp={(event) => {
+                    if (event.button === 2) return
+                    rasterZeigerHoch(index)
                   }}
                   onClick={() => tippeRaster(index)}
                 >
@@ -288,7 +319,16 @@ export function WerkbankForm() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/bloecke/ofen.png" alt="" className="mc-ofen-icon" />
             <div className="mc-ofen-feuer">
-              {ofenFachKnopf("eingabe", 20, ofen.eingabe, "Erz / Stamm", tippeRaster)}
+              {ofenFachKnopf(
+                "eingabe",
+                20,
+                ofen.eingabe,
+                "Erz / Stamm",
+                tippeRaster,
+                false,
+                rasterZeigerRunter,
+                rasterZeigerHoch,
+              )}
               <span
                 className="mc-ofen-flamme"
                 aria-label={
@@ -313,6 +353,9 @@ export function WerkbankForm() {
                 ofen.brennstoff,
                 "Holz / Kohle",
                 tippeRaster,
+                false,
+                rasterZeigerRunter,
+                rasterZeigerHoch,
               )}
             </div>
             <span className="mc-ofen-pfeil" aria-label="Schmelz-Fortschritt">
@@ -326,7 +369,16 @@ export function WerkbankForm() {
                 style={{ clipPath: `inset(0 ${(1 - schmelzAnteil) * 100}% 0 0)` }}
               />
             </span>
-            {ofenFachKnopf("ausgabe", 22, ofen.ausgabe, "Raus", tippeRaster, true)}
+            {ofenFachKnopf(
+              "ausgabe",
+              22,
+              ofen.ausgabe,
+              "Raus",
+              tippeRaster,
+              true,
+              rasterZeigerRunter,
+              rasterZeigerHoch,
+            )}
           </div>
         ) : (
           <p className="mc-tagline">
@@ -478,6 +530,8 @@ function ofenFachKnopf(
   label: string,
   onTipp: (index: number) => void,
   ausgabe = false,
+  runter?: () => void,
+  hoch?: (index: number) => void,
 ) {
   const item = slot ? gegenstandById(slot.id) : null
   return (
@@ -490,6 +544,11 @@ function ofenFachKnopf(
         if (event.button === 2) return
         event.preventDefault()
         event.currentTarget.setPointerCapture(event.pointerId)
+        runter?.()
+      }}
+      onPointerUp={(event) => {
+        if (event.button === 2) return
+        hoch?.(index)
       }}
       onClick={() => onTipp(index)}
     >
