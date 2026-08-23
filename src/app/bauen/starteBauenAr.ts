@@ -3,6 +3,7 @@ import {
   rissStufeVonAnteil,
   type AbbauStand,
 } from "@/lib/abbauen"
+import { tiefeMoeglich, tiefenOptionen } from "@/lib/tiefe"
 import {
   ndcVonViewport,
   webXrFeatures,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/spielflaeche"
 import { anzeigeArt,
   geometrieFuerBlock,
+  TIEFE_UNIFORMS,
   tuerAngelVersatz,
   tuerGeometrie,
   entferneRiss,
@@ -53,12 +55,17 @@ export type ArSteuerung = {
 export type ArMeldungen = {
   aufPlatte?: () => void
   aufEnde?: () => void
+  // Meldet, ob das Gerät wirklich Tiefendaten liefert
+  aufTiefe?: (moeglich: boolean) => void
 }
 
 export type ArOptionen = {
   // true: Blöcke in Lebensgrösse (1 m) wie im echten Minecraft,
   // false: Tischplatte mit 16-cm-Blöcken.
   lebensgross?: boolean
+  // true: echte Verdeckung — Blöcke verschwinden hinter Menschen,
+  // Wänden und Möbeln, statt über dem Kamerabild zu kleben.
+  verdeckung?: boolean
 }
 
 export async function starteBauenAr(
@@ -77,9 +84,16 @@ export async function starteBauenAr(
   const THREE = await import("three")
   const session = await xr.requestSession(modus, {
     requiredFeatures: webXrFeatures(),
-    optionalFeatures: ["dom-overlay", "plane-detection", "light-estimation"],
+    optionalFeatures: [
+      "dom-overlay",
+      "plane-detection",
+      "light-estimation",
+      // Verdeckung: echte Tiefe pro Bildpunkt vom ARCore-Sensor
+      ...(optionen.verdeckung ? ["depth-sensing"] : []),
+    ],
+    ...(optionen.verdeckung ? { depthSensing: tiefenOptionen() } : {}),
     domOverlay: { root: overlay },
-  })
+  } as XRSessionInit)
 
   // Langdruck beim Abbauen darf im DOM-Overlay weder Textauswahl noch
   // Kontextmenü auslösen — CSS allein reicht auf Android Chrome nicht
@@ -148,6 +162,11 @@ export async function starteBauenAr(
     throw new Error("AR-Sitzung wurde schon beendet")
   }
   let flaechenTreffer: { x: number; y: number; z: number } | null = null
+  // Verdeckung: Tiefenbild des Geräts als kleine Textur, die alle
+  // Block-Materialien im Shader abfragen.
+  let tiefenTextur: InstanceType<typeof THREE.DataTexture> | null = null
+  let tiefeGemeldet = false
+  let tiefeKaputt = false
 
   const szene = new THREE.Scene()
   const kamera = new THREE.PerspectiveCamera()
@@ -564,6 +583,16 @@ export async function starteBauenAr(
   let letzteBloeckeListe: GesetzterBlock[] | null = null
   let zuletzt = performance.now()
   renderer.setAnimationLoop((zeit, frame) => {
+    // Fliegt hier ein Fehler heraus, fordert three kein neues Bild mehr
+    // an — das Bild würde für immer einfrieren. Darum alles abfangen.
+    try {
+      zeichneBild(zeit, frame)
+    } catch {
+      // Nichts tun: das nächste Bild bekommt eine neue Chance
+    }
+  })
+
+  function zeichneBild(zeit: number, frame: XRFrame | undefined) {
     const dt = Math.min(0.05, (zeit - zuletzt) / 1000)
     zuletzt = zeit
     if (!ebene && frame && hitQuelle) {
@@ -661,14 +690,99 @@ export async function starteBauenAr(
       letzteBloeckeListe = aktuelle
       void zeichneBloecke()
     }
+    pflegeVerdeckung(frame)
     renderer.render(szene, kamera)
-  })
+  }
+
+
+  // Liest das Tiefenbild des Geräts und legt es allen Block-Shadern
+  // hin. ARCore liefert pro Bildpunkt Millimeter in zwei Bytes.
+  function pflegeVerdeckung(frame: XRFrame | undefined) {
+    if (!optionen.verdeckung || tiefeKaputt) return
+    if (!tiefeGemeldet) {
+      tiefeGemeldet = true
+      meldungen.aufTiefe?.(tiefeMoeglich(session as never))
+    }
+    const werte = TIEFE_UNIFORMS.tiefeWerte.value
+    werte[1] = 0
+    if (!frame || !tiefeMoeglich(session as never)) return
+    try {
+      const referenz = renderer.xr.getReferenceSpace()
+      if (!referenz) return
+      const pose = frame.getViewerPose(referenz)
+      const sicht = pose?.views[0]
+      if (!sicht) return
+      type CpuTiefe = {
+        data: ArrayBuffer
+        width: number
+        height: number
+        rawValueToMeters: number
+        normDepthBufferFromNormView: { matrix: Float32Array }
+      }
+      const holen = (
+        frame as unknown as {
+          getDepthInformation?: (sicht: XRView) => CpuTiefe | null
+        }
+      ).getDepthInformation
+      if (typeof holen !== "function") return
+      const info = holen.call(frame, sicht)
+      if (!info || !info.width || !info.height) return
+
+      const bytes = new Uint8Array(info.data)
+      if (
+        !tiefenTextur ||
+        tiefenTextur.image.width !== info.width ||
+        tiefenTextur.image.height !== info.height
+      ) {
+        tiefenTextur?.dispose()
+        tiefenTextur = new THREE.DataTexture(
+          bytes,
+          info.width,
+          info.height,
+          THREE.RGFormat,
+          THREE.UnsignedByteType,
+        )
+        // Nicht glätten: die zwei Bytes sind eine Zahl, kein Farbwert.
+        tiefenTextur.magFilter = THREE.NearestFilter
+        tiefenTextur.minFilter = THREE.NearestFilter
+        tiefenTextur.generateMipmaps = false
+        tiefenTextur.unpackAlignment = 1
+        TIEFE_UNIFORMS.tiefeKarte.value = tiefenTextur
+      } else {
+        tiefenTextur.image.data = bytes
+      }
+      tiefenTextur.needsUpdate = true
+
+      TIEFE_UNIFORMS.tiefeUv.value.set(info.normDepthBufferFromNormView.matrix)
+      const schicht = session.renderState.baseLayer
+      const feld = schicht?.getViewport(sicht)
+      const ziel = TIEFE_UNIFORMS.tiefeFeld.value
+      if (feld && feld.width > 0 && feld.height > 0) {
+        ziel[0] = feld.x
+        ziel[1] = feld.y
+        ziel[2] = feld.width
+        ziel[3] = feld.height
+      }
+      werte[0] = info.rawValueToMeters
+      werte[1] = 1
+    } catch {
+      // Ein einziger Fehlversuch darf die Sitzung nicht kippen —
+      // Verdeckung bleibt dann für diese Sitzung einfach aus.
+      tiefeKaputt = true
+      werte[1] = 0
+      meldungen.aufTiefe?.(false)
+    }
+  }
 
   spaeterAbbau = () => {
     overlay.removeEventListener("pointerdown", aufOverlayDown)
     overlay.removeEventListener("pointermove", aufOverlayMove)
     overlay.removeEventListener("pointerup", aufOverlayUp)
     overlay.removeEventListener("pointercancel", aufOverlayUp)
+    TIEFE_UNIFORMS.tiefeWerte.value[1] = 0
+    TIEFE_UNIFORMS.tiefeKarte.value = null
+    tiefenTextur?.dispose()
+    tiefenTextur = null
     renderer.setAnimationLoop(null)
     try {
       hitQuelle?.cancel()
