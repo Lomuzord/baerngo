@@ -49,19 +49,27 @@ export function tiefeInMetern(
 }
 
 // Wie viel näher die echte Welt sein muss, damit wir wegschneiden.
-// Etwas Abstand verhindert Flimmern an Kanten, weil die geschätzte
-// Tiefe pro Bild leicht schwankt.
-export const TIEFE_TOLERANZ_METER = 0.15
+// Der Messfehler wächst mit der Entfernung: nah ist die Schätzung auf
+// wenige Zentimeter genau, in fünf Metern schwankt sie deutlich mehr.
+// Darum ein Anteil der Entfernung statt eines festen Werts — sonst
+// schneidet eine Platte, die auf dem Boden liegt, sich selbst löchrig,
+// oder sie deckt umgekehrt die Füsse einer Person zu.
+export const TIEFE_TOLERANZ_ANTEIL = 0.04
+export const TIEFE_TOLERANZ_MIN = 0.05
+export const TIEFE_TOLERANZ_MAX = 0.35
 
-export function tiefeVerdeckt(
-  echtMeter: number,
-  blockMeter: number,
-  toleranz = TIEFE_TOLERANZ_METER,
-): boolean {
+export function tiefeToleranz(echtMeter: number): number {
+  return Math.min(
+    TIEFE_TOLERANZ_MAX,
+    Math.max(TIEFE_TOLERANZ_MIN, echtMeter * TIEFE_TOLERANZ_ANTEIL),
+  )
+}
+
+export function tiefeVerdeckt(echtMeter: number, blockMeter: number): boolean {
   // 0 heisst "keine Messung" — dann lieber zeichnen als fälschlich
   // alles wegschneiden.
   if (!(echtMeter > 0.05)) return false
-  return echtMeter < blockMeter - toleranz
+  return echtMeter < blockMeter - tiefeToleranz(echtMeter)
 }
 
 export function tiefeHinweis(moeglich: boolean, an: boolean): string {

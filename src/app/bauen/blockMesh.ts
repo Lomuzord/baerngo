@@ -12,8 +12,8 @@ export const TIEFE_UNIFORMS = {
   tiefeUv: { value: new Float32Array(16) },
   // Sichtfeld in Pixeln: x, y, Breite, Höhe
   tiefeFeld: { value: new Float32Array([0, 0, 1, 1]) },
-  // x: Rohwert -> Meter, y: an/aus, z: Toleranz in Metern
-  tiefeWerte: { value: new Float32Array([0.001, 0, 0.15, 0]) },
+  // x: Rohwert -> Meter, y: an/aus, z: Toleranz-Anteil der Entfernung
+  tiefeWerte: { value: new Float32Array([0.001, 0, 0.04, 0]) },
 }
 
 // Baut den Tiefentest in ein Material ein: Bildpunkte, vor denen etwas
@@ -55,10 +55,11 @@ varying float vTiefeAbstand;
       vec2 roh = texture2D(tiefeKarte, tuv).rg;
       float echt = (roh.r * 255.0 + roh.g * 255.0 * 256.0) * tiefeWerte.x;
       // 0 heisst "nicht gemessen" — dann nichts wegschneiden.
-      // Die Toleranz verhindert, dass eine Fläche direkt auf dem
-      // Boden sich selbst wegschneidet: die geschätzte Tiefe
-      // schwankt pro Bild um einige Zentimeter.
-      if (echt > 0.05 && echt < vTiefeAbstand - tiefeWerte.z) discard;
+      // Toleranz wächst mit der Entfernung: nah genau, weit ungenau.
+      // So schneidet sich eine Platte auf dem Boden nicht selbst,
+      // aber eine Person davor schneidet die Platte hinter ihr weg.
+      float tol = clamp(echt * tiefeWerte.z, 0.05, 0.35);
+      if (echt > 0.05 && echt < vTiefeAbstand - tol) discard;
     }
   }`,
       )

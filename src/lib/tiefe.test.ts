@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  TIEFE_TOLERANZ_METER,
+  tiefeToleranz,
   tiefeHinweis,
   tiefeInMetern,
   tiefeMoeglich,
@@ -49,15 +49,31 @@ describe("tiefeInMetern", () => {
   })
 })
 
+describe("tiefeToleranz", () => {
+  it("grows with distance but stays inside sane limits", () => {
+    expect(tiefeToleranz(1)).toBeCloseTo(0.05)
+    expect(tiefeToleranz(3)).toBeCloseTo(0.12)
+    expect(tiefeToleranz(0.2)).toBe(0.05)
+    expect(tiefeToleranz(50)).toBe(0.35)
+  })
+})
+
 describe("tiefeVerdeckt", () => {
   it("hides a block only when the real world is clearly in front", () => {
     expect(tiefeVerdeckt(1.0, 3.0)).toBe(true)
     expect(tiefeVerdeckt(3.0, 1.0)).toBe(false)
     // Gleich weit: nicht wegschneiden, sonst flimmert es
     expect(tiefeVerdeckt(2.0, 2.0)).toBe(false)
-    expect(tiefeVerdeckt(2.0, 2.0 + TIEFE_TOLERANZ_METER / 2)).toBe(false)
+    expect(tiefeVerdeckt(2.0, 2.05)).toBe(false)
     // Keine Messung (0) darf nie verdecken
     expect(tiefeVerdeckt(0, 5)).toBe(false)
+  })
+
+  it("lets a person at 3 m stand on a plate that continues behind them", () => {
+    // Beine bei 3 m, Platte dahinter bei 5 m -> Platte weg
+    expect(tiefeVerdeckt(3.0, 5.0)).toBe(true)
+    // Direkt an den Füssen (fast gleiche Tiefe) bleibt die Platte
+    expect(tiefeVerdeckt(3.0, 3.05)).toBe(false)
   })
 })
 

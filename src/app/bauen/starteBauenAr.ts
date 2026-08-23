@@ -4,7 +4,7 @@ import {
   type AbbauStand,
 } from "@/lib/abbauen"
 import {
-  TIEFE_TOLERANZ_METER,
+  TIEFE_TOLERANZ_ANTEIL,
   tiefeMoeglich,
   tiefenOptionen,
 } from "@/lib/tiefe"
@@ -806,7 +806,7 @@ export async function starteBauenAr(
       }
       werte[0] = info.rawValueToMeters
       werte[1] = 1
-      werte[2] = TIEFE_TOLERANZ_METER
+      werte[2] = TIEFE_TOLERANZ_ANTEIL
       melde(
         `Tiefe aktiv · ${info.width}×${info.height} · Feld ${Math.round(
           ziel[2],
