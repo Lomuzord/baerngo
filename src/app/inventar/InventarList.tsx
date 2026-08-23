@@ -1,6 +1,9 @@
 "use client"
 
 import { albumGegenstaende, parseAlbum } from "@/lib/album"
+import { essenArt, istEssen } from "@/lib/essen"
+import { spieleHaptik } from "@/lib/haptik"
+import { esseGegenstand } from "../useBoost"
 import { BRUNNEN, parseBrunnenStand } from "@/lib/brunnen"
 import { useEffect, useRef, useState } from "react"
 import { anzeigeHaltbarkeit } from "@/lib/abbauen"
@@ -36,6 +39,12 @@ export function InventarList() {
 
   const name = cursor ? gegenstandById(cursor.id)?.name : null
 
+  const [essenHinweis, setEssenHinweis] = useState("")
+  useEffect(() => {
+    if (!essenHinweis) return
+    const timer = window.setTimeout(() => setEssenHinweis(""), 3500)
+    return () => window.clearTimeout(timer)
+  }, [essenHinweis])
   const [brunnenGesammelt, setBrunnenGesammelt] = useState<string[]>([])
   const [entdeckt, setEntdeckt] = useState<Set<string>>(new Set())
   useEffect(() => {
@@ -78,6 +87,27 @@ export function InventarList() {
         cursor={cursor}
         onCursor={setCursor}
       />
+      {cursor && istEssen(cursor.id) ? (
+        <button
+          type="button"
+          className="mc-btn mc-essen-btn"
+          onClick={() => {
+            if (!cursor) return
+            esseGegenstand(cursor.id)
+            spieleHaptik("sammeln")
+            const rest = cursor.anzahl - 1
+            setCursor(rest > 0 ? { id: cursor.id, anzahl: rest } : null)
+            setEssenHinweis(
+              `${gegenstandById(cursor.id)?.name ?? cursor.id} gegessen — ${
+                essenArt(cursor.id)?.wirkung ?? ""
+              }`,
+            )
+          }}
+        >
+          🍽 {gegenstandById(cursor.id)?.name} essen
+        </button>
+      ) : null}
+      {essenHinweis ? <p className="mc-tagline">{essenHinweis}</p> : null}
       {name && cursor ? (
         <p className="mc-held-name">
           {name}

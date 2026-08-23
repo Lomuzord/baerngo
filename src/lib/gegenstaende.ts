@@ -145,6 +145,14 @@ const GEGENSTAENDE: Record<string, Gegenstand> = {
     textur: "/bloecke/milcheimer.png",
   },
   schere: { id: "schere", name: "Schere", textur: "/bloecke/schere.png" },
+  kuchen: { id: "kuchen", name: "Kuchen", textur: "/bloecke/kuchen.png" },
+  bett: { id: "bett", name: "Bett", textur: "/bloecke/bett.png" },
+  teppich: { id: "teppich", name: "Teppich", textur: "/bloecke/teppich.png" },
+  bilderrahmen: {
+    id: "bilderrahmen",
+    name: "Bilderrahmen",
+    textur: "/bloecke/bilderrahmen.png",
+  },
   redstoneerz: {
     id: "redstoneerz",
     name: "Redstone-Erz",

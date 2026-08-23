@@ -198,8 +198,11 @@ export function WerkbankForm() {
       spieleHaptik("falsch")
       return
     }
+    // Manche Rezepte geben Behälter zurück (Kuchen: die leeren Eimer)
+    const rueckgabe = rezeptById(gecraftet.rezeptId ?? "")?.rueckgabe ?? []
     const gelegt = legeBeuteInSlotsMitRest(slots, [
       { gegenstandId: gecraftet.ergebnis.id, anzahl: gecraftet.anzahl },
+      ...rueckgabe,
     ])
     if (gelegt.rest.length > 0) {
       // Kein Platz: Zutaten bleiben im Raster liegen.

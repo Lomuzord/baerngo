@@ -33,6 +33,8 @@ import { istTier, tierById, tierDrops } from "@/lib/tiere"
 import { BRUNNEN } from "@/lib/brunnen"
 import { useWanderweg } from "./useWanderweg"
 import { useTruhen } from "./useTruhen"
+import { useBoost } from "./useBoost"
+import { boostText } from "@/lib/essen"
 import { formatiereTruhePause } from "@/lib/truhe"
 import {
   AUFGABEN_EREIGNIS,
@@ -101,7 +103,10 @@ export function BernKarteGl({
   }, [])
   const umweltAnRef = useRef(umweltAn)
   umweltAnRef.current = umweltAn
-  const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit)
+  const { boost, jetzt: boostJetzt, faktor, bonus } = useBoost()
+  const faktorRef = useRef(faktor)
+  faktorRef.current = faktor
+  const { bloecke, nimm } = useWildspawn(spieler, umweltAn, karteBereit, bonus)
   const { brunnen } = useWanderweg(
     spieler,
     (text, beute) => {
@@ -267,7 +272,7 @@ export function BernKarteGl({
             }
             if (
               distanzMeter(jetzt.lage, klick) <=
-                sammelRadius(jetzt.genauigkeit) &&
+                sammelRadius(jetzt.genauigkeit, faktorRef.current()) &&
               (zaehleSlots(slotsRef.current).eimer ?? 0) > 0 &&
               umweltAnRef.current(klick) === "wasser"
             ) {
@@ -290,7 +295,10 @@ export function BernKarteGl({
           setzeSammelring(
             map,
             spielerRef.current.lage,
-            sammelRadius(spielerRef.current.genauigkeit),
+            sammelRadius(
+              spielerRef.current.genauigkeit,
+              faktorRef.current(),
+            ),
           )
         }
         setzeSpielerMarker(
@@ -354,7 +362,11 @@ export function BernKarteGl({
     const map = karte.current
     if (!map) return
     if (spieler.status === "bereit" && map.isStyleLoaded()) {
-      setzeSammelring(map, spieler.lage, sammelRadius(spieler.genauigkeit))
+      setzeSammelring(
+        map,
+        spieler.lage,
+        sammelRadius(spieler.genauigkeit, faktor()),
+      )
     }
     setzeSpielerMarker(
       map,
@@ -382,7 +394,9 @@ export function BernKarteGl({
     const leben = new Set(bloecke.map((block) => block.id))
     const lage = spieler.status === "bereit" ? spieler.lage : null
     const reichweite =
-      spieler.status === "bereit" ? sammelRadius(spieler.genauigkeit) : 0
+      spieler.status === "bereit"
+        ? sammelRadius(spieler.genauigkeit, faktor())
+        : 0
     for (const block of bloecke) {
       const nah = lage
         ? istNahGenug(lage, block.lage, reichweite)
@@ -399,7 +413,10 @@ export function BernKarteGl({
             const ziel =
               bloeckeRef.current.find((eintrag) => eintrag.id === id) ?? block
             const distanz = distanzMeter(aktuell.lage, ziel.lage)
-            const reich = sammelRadius(aktuell.genauigkeit)
+            const reich = sammelRadius(
+              aktuell.genauigkeit,
+              faktorRef.current(),
+            )
             if (distanz > reich) {
               spieleHaptik("zu-weit")
               setHinweis(`Noch ${entfernungText(distanz - reich)}`)
@@ -541,6 +558,11 @@ export function BernKarteGl({
       <p className="mc-wild-zahl">
         {bloecke.length} Blöcke in der Nähe
       </p>
+      {boostText(boost, boostJetzt) ? (
+        <p className="mc-boost-chip" aria-label="Essen-Boost">
+          {boostText(boost, boostJetzt)}
+        </p>
+      ) : null}
       <button
         type="button"
         className={

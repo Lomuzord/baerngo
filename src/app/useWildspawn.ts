@@ -17,7 +17,11 @@ export function useWildspawn(
   spieler: SpielerOrt,
   umweltAn: ((lage: Lage) => Umwelt) | null,
   karteBereit = false,
+  // Essen-Boost: wie viele Blöcke zusätzlich spawnen sollen
+  spawnBonus?: () => number,
 ) {
+  const bonusRef = useRef<() => number>(() => 0)
+  bonusRef.current = spawnBonus ?? (() => 0)
   const [stand, setStand] = useState<WildStand | null>(null)
   const standRef = useRef(stand)
   standRef.current = stand
@@ -36,6 +40,7 @@ export function useWildspawn(
         spieler.blick,
         aktuell?.letzteSpawn,
         aktuell?.letzteSpawnZeit,
+        bonusRef.current(),
       )
       const danach: WildStand = {
         schluessel: `${lage.lat.toFixed(4)}:${lage.lng.toFixed(4)}`,

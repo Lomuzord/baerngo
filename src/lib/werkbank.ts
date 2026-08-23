@@ -18,6 +18,8 @@ export type Rezept = {
   // Rezepte mit gleicher Gruppe erscheinen als EIN Listeneintrag
   // mit wählbaren Varianten (z. B. die vier Spitzhacken-Stufen)
   gruppe?: string
+  // Was beim Craften zusätzlich zurückkommt (z. B. leere Eimer)
+  rueckgabe?: { gegenstandId: string; anzahl: number }[]
 }
 
 const REZEPTE: readonly Rezept[] = [
@@ -417,6 +419,56 @@ const REZEPTE: readonly Rezept[] = [
     ergebnisAnzahl: 1,
   },
   {
+    id: "kuchen",
+    name: "Kuchen",
+    zutat: { milcheimer: 3, ei: 1, honig: 2, weizen: 3 },
+    form: [
+      "milcheimer", "milcheimer", "milcheimer",
+      "honig", "ei", "honig",
+      "weizen", "weizen", "weizen",
+    ],
+    ergebnisId: "kuchen",
+    ergebnisAnzahl: 1,
+    // Die Eimer bleiben übrig, genau wie in Minecraft
+    rueckgabe: [{ gegenstandId: "eimer", anzahl: 3 }],
+  },
+  {
+    id: "bett",
+    name: "Bett",
+    zutat: { wolle: 3, holz: 3 },
+    form: [
+      "wolle", "wolle", "wolle",
+      "holz", "holz", "holz",
+      null, null, null,
+    ],
+    ergebnisId: "bett",
+    ergebnisAnzahl: 1,
+  },
+  {
+    id: "teppich",
+    name: "Teppich",
+    zutat: { wolle: 2 },
+    form: [
+      "wolle", "wolle", null,
+      null, null, null,
+      null, null, null,
+    ],
+    ergebnisId: "teppich",
+    ergebnisAnzahl: 3,
+  },
+  {
+    id: "bilderrahmen",
+    name: "Bilderrahmen",
+    zutat: { stock: 8, leder: 1 },
+    form: [
+      "stock", "stock", "stock",
+      "stock", "leder", "stock",
+      "stock", "stock", "stock",
+    ],
+    ergebnisId: "bilderrahmen",
+    ergebnisAnzahl: 1,
+  },
+  {
     id: "brot",
     name: "Brot",
     zutat: { weizen: 3 },
@@ -487,7 +539,7 @@ const REZEPTE: readonly Rezept[] = [
   {
     id: "honigbrot",
     name: "Honigbrot",
-    zutat: { honig: 1, buch: 1 },
+    zutat: { honig: 1, brot: 1 },
     ergebnisId: "honigbrot",
     ergebnisAnzahl: 1,
   },
@@ -830,7 +882,13 @@ function vorratMitRaster(
 export function nimmCraft(
   raster: Raster,
 ):
-  | { ok: true; raster: Raster; ergebnis: Gegenstand; anzahl: number }
+  | {
+      ok: true
+      raster: Raster
+      ergebnis: Gegenstand
+      anzahl: number
+      rezeptId: string
+    }
   | { ok: false; grund: string } {
   const rezept = rezeptFuerRaster(raster)
   const ergebnis = rezept ? gegenstandById(rezept.ergebnisId) : null
@@ -848,6 +906,7 @@ export function nimmCraft(
     raster: danach,
     ergebnis,
     anzahl: rezept.ergebnisAnzahl,
+    rezeptId: rezept.id,
   }
 }
 

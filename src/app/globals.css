@@ -337,6 +337,29 @@
   filter: drop-shadow(0 0 6px #f1c232);
 }
 
+/* Aktiver Essen-Boost auf der Karte */
+.mc-boost-chip {
+  position: absolute;
+  left: 0.6rem;
+  top: 5rem;
+  z-index: 5;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  background: #2b2118e6;
+  border: 2px solid #7cfc00;
+  border-radius: 8px;
+  color: #b6ff7a;
+  font-family: var(--font-vt), ui-monospace, monospace;
+  font-size: 0.95rem;
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+
+.mc-essen-btn {
+  margin: 0.6rem auto 0;
+  display: block;
+}
+
 /* Tagesaufgaben-Chip und Panel */
 .mc-aufgaben-chip {
   position: absolute;

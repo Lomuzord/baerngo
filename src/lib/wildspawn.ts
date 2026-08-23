@@ -10,12 +10,15 @@ export const WILD_SAMMEL_METER = 22
 export const WILD_LAUF_METER = 40
 const GPS_ZU_SAMMEL_MAX = 10
 
-export function sammelRadius(genauigkeit?: number): number {
+export function sammelRadius(genauigkeit?: number, faktor = 1): number {
   const gps =
     typeof genauigkeit === "number" && Number.isFinite(genauigkeit)
       ? Math.max(0, genauigkeit)
       : 0
-  return WILD_SAMMEL_METER + Math.min(GPS_ZU_SAMMEL_MAX, Math.round(gps * 0.4))
+  const basis =
+    WILD_SAMMEL_METER + Math.min(GPS_ZU_SAMMEL_MAX, Math.round(gps * 0.4))
+  // Brot & Co. vergrössern die Reichweite für eine Weile
+  return Math.round(basis * faktor)
 }
 export const WILD_DESPAWN_METER = 95
 export const WILD_PAUSE_MS = 8 * 60 * 1000
@@ -49,6 +52,7 @@ export function aktualisiereWild(
   blick?: number,
   letzteSpawn?: Lage,
   letzteSpawnZeit?: number,
+  bonus = 0,
 ): { bloecke: WildBlock[]; letzteSpawn: Lage; letzteSpawnZeit: number } {
   const bleiben = bisher.filter((block) => {
     if (jetzt - block.seit > WILD_PAUSE_MS) return false
@@ -64,7 +68,10 @@ export function aktualisiereWild(
   if (bleiben.length === 0) {
     if (gelaufen >= WILD_LAUF_METER || pauseVorbei) {
       return {
-        bloecke: erzeugeWildbloecke(spieler, umweltAn, jetzt, { blick }),
+        bloecke: erzeugeWildbloecke(spieler, umweltAn, jetzt, {
+          blick,
+          anzahl: WILD_ANZAHL + bonus,
+        }),
         letzteSpawn: { ...spieler },
         letzteSpawnZeit: jetzt,
       }
@@ -88,7 +95,7 @@ export function aktualisiereWild(
       letzteSpawnZeit: letzteSpawnZeit ?? jetzt,
     }
   }
-  const fehlen = WILD_ANZAHL - bleiben.length
+  const fehlen = WILD_ANZAHL + bonus - bleiben.length
   const extra =
     fehlen > 0
       ? erzeugeWildbloecke(spieler, umweltAn, jetzt, {
