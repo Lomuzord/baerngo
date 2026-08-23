@@ -70,6 +70,8 @@ export type ArOptionen = {
   // true: echte Verdeckung — Blöcke verschwinden hinter Menschen,
   // Wänden und Möbeln, statt über dem Kamerabild zu kleben.
   verdeckung?: boolean
+  // Kleines Vorschaubild des Tiefenbilds (zum Prüfen der Ausrichtung)
+  tiefenVorschau?: HTMLCanvasElement | null
 }
 
 export async function starteBauenAr(
@@ -702,6 +704,38 @@ export async function starteBauenAr(
 
   // Liest das Tiefenbild des Geräts und legt es allen Block-Shadern
   // hin. ARCore liefert pro Bildpunkt Millimeter in zwei Bytes.
+  // Malt das Tiefenbild klein ins HUD: nah = rot, fern = blau.
+  // Damit sieht man sofort, ob es zur Kameraansicht passt oder
+  // gedreht/gespiegelt ankommt.
+  let vorschauZaehler = 0
+  function zeigeTiefenbild(
+    bytes: Uint8Array,
+    breite: number,
+    hoehe: number,
+    rohZuMeter: number,
+  ) {
+    const leinwand = optionen.tiefenVorschau
+    if (!leinwand) return
+    // Nur alle paar Bilder — das reicht fürs Auge und spart Rechenzeit
+    if (vorschauZaehler++ % 6 !== 0) return
+    if (leinwand.width !== breite || leinwand.height !== hoehe) {
+      leinwand.width = breite
+      leinwand.height = hoehe
+    }
+    const ctx = leinwand.getContext("2d")
+    if (!ctx) return
+    const bild = ctx.createImageData(breite, hoehe)
+    for (let i = 0; i < breite * hoehe; i++) {
+      const meter = (bytes[i * 2]! + bytes[i * 2 + 1]! * 256) * rohZuMeter
+      const anteil = Math.max(0, Math.min(1, meter / 5))
+      bild.data[i * 4] = Math.round(255 * (1 - anteil))
+      bild.data[i * 4 + 1] = Math.round(120 * (1 - Math.abs(anteil - 0.5) * 2))
+      bild.data[i * 4 + 2] = Math.round(255 * anteil)
+      bild.data[i * 4 + 3] = meter > 0 ? 235 : 0
+    }
+    ctx.putImageData(bild, 0, 0)
+  }
+
   function melde(text: string) {
     if (text === letzteTiefeMeldung) return
     letzteTiefeMeldung = text
@@ -807,6 +841,7 @@ export async function starteBauenAr(
       werte[0] = info.rawValueToMeters
       werte[1] = 1
       werte[2] = TIEFE_TOLERANZ_ANTEIL
+      zeigeTiefenbild(bytes, info.width, info.height, info.rawValueToMeters)
       melde(
         `Tiefe aktiv · ${info.width}×${info.height} · Feld ${Math.round(
           ziel[2],

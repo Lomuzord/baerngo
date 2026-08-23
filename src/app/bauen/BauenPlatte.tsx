@@ -72,6 +72,7 @@ export function BauenPlatte() {
   const [verdeckung, setVerdeckung] = useState(false)
   // Klartext-Zustand der AR-Verdeckung, dauerhaft im HUD sichtbar
   const [tiefeStatus, setTiefeStatus] = useState("")
+  const tiefeVorschau = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     setLebensgross(
@@ -361,7 +362,11 @@ export function BauenPlatte() {
             setHinweis("AR beendet. Weiter auf der Tischplatte.")
           },
         },
-        { lebensgross, verdeckung },
+        {
+          lebensgross,
+          verdeckung,
+          tiefenVorschau: tiefeVorschau.current,
+        },
       )
       setArStatus("an")
       spieleHaptik("ar")
@@ -504,6 +509,15 @@ export function BauenPlatte() {
         {arStatus === "an" && verdeckung && tiefeStatus ? (
           <p className="mc-tiefe-status">{tiefeStatus}</p>
         ) : null}
+        <canvas
+          ref={tiefeVorschau}
+          className={
+            arStatus === "an" && verdeckung
+              ? "mc-tiefe-bild"
+              : "mc-tiefe-bild mc-tiefe-bild-aus"
+          }
+          aria-label="Tiefenbild"
+        />
         {arStatus === "an" ? (
           <button
             type="button"

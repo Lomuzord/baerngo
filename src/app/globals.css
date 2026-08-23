@@ -2135,3 +2135,23 @@
   font-size: 0.85rem;
   text-shadow: 1px 1px 0 #000;
 }
+
+/* Vorschau des AR-Tiefenbilds: zeigt, wie das Gerät die Welt misst */
+.mc-tiefe-bild {
+  position: fixed;
+  right: 0.5rem;
+  top: calc(0.5rem + env(safe-area-inset-top));
+  z-index: 70;
+  width: 33vw;
+  max-width: 190px;
+  height: auto;
+  border: 2px solid #f1c232;
+  border-radius: 6px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.mc-tiefe-bild-aus {
+  display: none;
+}
