@@ -91,7 +91,7 @@ describe("Laub ernten", () => {
     expect(ernteDrops("laub", abbauDrop, () => 0.02)).toEqual([
       { gegenstandId: "setzling", anzahl: 1 },
     ])
-    expect(ernteDrops("laub", abbauDrop, () => 0.1)).toEqual([
+    expect(ernteDrops("laub", abbauDrop, () => 0.2)).toEqual([
       { gegenstandId: "stock", anzahl: 1 },
     ])
     expect(ernteDrops("laub", abbauDrop, () => 0.5)).toEqual([])

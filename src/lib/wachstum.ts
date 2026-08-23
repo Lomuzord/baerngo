@@ -143,8 +143,8 @@ export function ernteDrops(
   if (gegenstandId === "laub") {
     if (werkzeugId === "schere") return [{ gegenstandId: "laub", anzahl: 1 }]
     const wurf = zufall()
-    if (wurf < 0.08) return [{ gegenstandId: "setzling", anzahl: 1 }]
-    if (wurf < 0.14) return [{ gegenstandId: "stock", anzahl: 1 }]
+    if (wurf < 0.15) return [{ gegenstandId: "setzling", anzahl: 1 }]
+    if (wurf < 0.3) return [{ gegenstandId: "stock", anzahl: 1 }]
     return []
   }
   return [{ gegenstandId: abbauDrop(gegenstandId), anzahl: 1 }]

@@ -176,7 +176,7 @@ export function BauenPlatte() {
     steuerung.current.abbau = () => abbauRef.current
     steuerung.current.aufSetzen = (zelle) => {
       if (wahlIndex == null || !wahl || !istSetzbar(wahl)) return
-      if (!kannBlockSetzen(bloecke, zelle)) return
+      if (!kannBlockSetzen(bloecke, zelle, wahl)) return
       if (!kannPflanzen(bloecke, wahl, zelle)) {
         setHinweis("Setzling und Samen brauchen Erde oder Gras darunter.")
         return
@@ -207,6 +207,35 @@ export function BauenPlatte() {
     steuerung.current.stromAn = () => stromRef.current
     steuerung.current.aufSchalte = (blockId) => schalte(blockId)
   })
+
+  // Sagt hörbar und sichtbar, was beim Abbauen herauskam — gerade bei
+  // Laub, das ohne Schere oft gar nichts hinterlässt.
+  function meldeAbbau(
+    gegenstandId: string,
+    drops: { gegenstandId: string; anzahl: number }[],
+  ) {
+    if (drops.length === 0) {
+      spieleHaptik("rattle")
+      setHinweis(
+        gegenstandId === "laub"
+          ? "Laub zerfällt — nichts übrig. Mit der Schere gäbe es den Block."
+          : "Abgebaut.",
+      )
+      return
+    }
+    const setzlingDabei = drops.some(
+      (stuck) => stuck.gegenstandId === "setzling",
+    )
+    spieleHaptik(setzlingDabei ? "sammeln" : "abbauen")
+    setHinweis(
+      drops
+        .map(
+          (stuck) =>
+            `+${stuck.anzahl} ${gegenstandById(stuck.gegenstandId)?.name ?? stuck.gegenstandId}`,
+        )
+        .join(" · ") + (setzlingDabei ? " !" : ""),
+    )
+  }
 
   function schlageGesetzt(blockId: string, werkzeug: string | null): boolean {
     const weg = bloecke.find((block) => block.id === blockId)
@@ -260,12 +289,10 @@ export function BauenPlatte() {
               : "Die Spitzhacke ist zerbrochen.",
         )
       } else {
-        spieleHaptik("abbauen")
-        setHinweis("Abgebaut.")
+        meldeAbbau(weg.gegenstandId, drops)
       }
     } else {
-      spieleHaptik("abbauen")
-      setHinweis("Abgebaut.")
+      meldeAbbau(weg.gegenstandId, drops)
     }
     setzeSlots(nextSlots)
     return true

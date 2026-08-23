@@ -74,3 +74,12 @@ describe("berechneStrom", () => {
     expect(berechneStrom(welt).has("redstonelampe-0-3-0")).toBe(true)
   })
 })
+
+describe("Türen", () => {
+  it("opens by hand without any redstone and closes again", () => {
+    const zu = [block("tuer", 0, 0, 0)]
+    expect(berechneStrom(zu).has("tuer-0-0-0")).toBe(false)
+    const auf = [block("tuer", 0, 0, 0, true)]
+    expect(berechneStrom(auf).has("tuer-0-0-0")).toBe(true)
+  })
+})

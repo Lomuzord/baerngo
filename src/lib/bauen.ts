@@ -75,9 +75,25 @@ export function entferneBlock(
   return bloecke.filter((block) => block.id !== blockId)
 }
 
+// Türen sind wie in Minecraft zwei Blöcke hoch: sie belegen zusätzlich
+// die Zelle darüber.
+function belegtDurchTuer(
+  bloecke: GesetzterBlock[],
+  zelle: Zelle,
+): boolean {
+  return bloecke.some(
+    (block) =>
+      block.gegenstandId === "tuer" &&
+      block.zelle.ix === zelle.ix &&
+      block.zelle.iz === zelle.iz &&
+      block.zelle.iy === zelle.iy - 1,
+  )
+}
+
 export function kannBlockSetzen(
   bloecke: GesetzterBlock[],
   zelle: Zelle,
+  gegenstandId?: string,
 ): boolean {
   if (
     Math.abs(zelle.ix) > EBENE_RADIUS_ZELLEN ||
@@ -87,12 +103,20 @@ export function kannBlockSetzen(
   ) {
     return false
   }
-  return !bloecke.some(
-    (block) =>
-      block.zelle.ix === zelle.ix &&
-      block.zelle.iy === zelle.iy &&
-      block.zelle.iz === zelle.iz,
-  )
+  const belegt = (pruef: Zelle) =>
+    bloecke.some(
+      (block) =>
+        block.zelle.ix === pruef.ix &&
+        block.zelle.iy === pruef.iy &&
+        block.zelle.iz === pruef.iz,
+    )
+  if (belegt(zelle) || belegtDurchTuer(bloecke, zelle)) return false
+  if (gegenstandId === "tuer") {
+    // Der obere Türflügel braucht auch Platz
+    const oben = { ...zelle, iy: zelle.iy + 1 }
+    if (oben.iy >= PLATTE_MAX_HOEHE || belegt(oben)) return false
+  }
+  return true
 }
 
 export function setzeBlock(
@@ -100,7 +124,7 @@ export function setzeBlock(
   gegenstandId: string,
   zelle: Zelle,
 ): GesetzterBlock[] {
-  if (!kannBlockSetzen(bloecke, zelle)) return bloecke
+  if (!kannBlockSetzen(bloecke, zelle, gegenstandId)) return bloecke
   return falleBloecke([...bloecke, neuerBlock(gegenstandId, zelle)])
 }
 

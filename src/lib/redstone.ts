@@ -26,7 +26,12 @@ export function istVerbraucher(gegenstandId: string): boolean {
 
 // Zum Antippen: Hebel rastet, Knopf pulst
 export function istSchaltbar(gegenstandId: string): boolean {
-  return gegenstandId === "hebel" || gegenstandId === "knopf"
+  return (
+    gegenstandId === "hebel" ||
+    gegenstandId === "knopf" ||
+    // Türen öffnet man auch von Hand — antippen genügt
+    gegenstandId === "tuer"
+  )
 }
 
 function schluessel(zelle: Zelle): string {
@@ -92,6 +97,12 @@ export function berechneStrom(bloecke: GesetzterBlock[]): Set<string> {
 
   const unterStrom = new Set<string>()
   for (const quelle of aktiveQuellen) unterStrom.add(quelle.id)
+  // Von Hand geöffnete Türen bleiben offen, auch ohne Strom
+  for (const block of bloecke) {
+    if (block.gegenstandId === "tuer" && block.an === true) {
+      unterStrom.add(block.id)
+    }
+  }
   for (const block of bloecke) {
     if (istLeitung(block.gegenstandId)) {
       if ((staerke.get(schluessel(block.zelle)) ?? 0) > 0) {

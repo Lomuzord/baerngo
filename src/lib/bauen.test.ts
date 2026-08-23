@@ -7,6 +7,7 @@ import {
   falleBloecke,
   hatAbbauWerkzeug,
   istAbbauWerkzeug,
+  kannBlockSetzen,
   nimmBlock,
   neuerBlock,
   parseBloecke,
@@ -115,5 +116,33 @@ describe("falleBloecke", () => {
     expect(
       danach.find((block) => block.gegenstandId === "sandstein")?.zelle,
     ).toEqual({ ix: 1, iy: 0, iz: 0 })
+  })
+})
+
+describe("Türen brauchen zwei Blöcke Höhe", () => {
+  function tuerBlock(ix: number, iy: number, iz: number) {
+    return {
+      id: `tuer-${ix}-${iy}-${iz}`,
+      gegenstandId: "tuer",
+      zelle: { ix, iy, iz },
+    }
+  }
+
+  it("blocks the cell above a door and needs room when placed", () => {
+    const welt = [tuerBlock(0, 0, 0)]
+    // Direkt über der Tür ist kein Platz mehr
+    expect(kannBlockSetzen(welt, { ix: 0, iy: 1, iz: 0 })).toBe(false)
+    // Daneben schon
+    expect(kannBlockSetzen(welt, { ix: 1, iy: 1, iz: 0 })).toBe(true)
+    // Eine Tür braucht die Zelle darüber frei
+    const voll = [
+      {
+        id: "stein-0-1-0",
+        gegenstandId: "stein",
+        zelle: { ix: 0, iy: 1, iz: 0 },
+      },
+    ]
+    expect(kannBlockSetzen(voll, { ix: 0, iy: 0, iz: 0 }, "tuer")).toBe(false)
+    expect(kannBlockSetzen(voll, { ix: 0, iy: 0, iz: 0 }, "stein")).toBe(true)
   })
 })

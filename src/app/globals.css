@@ -17,6 +17,26 @@
   --font-display: var(--font-pixel);
 }
 
+/* Spiel-Grafiken sind keine Fotos: kein Bild-Menü, kein Ziehen,
+   und Zeiger-Ereignisse gehören dem Knopf darunter. */
+.mc-body img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.mc-slot img,
+.mc-craft-slot img,
+.mc-out-slot img,
+.mc-hotbar img,
+.mc-hand-ablage img,
+.mc-album img,
+.mc-abzeichen img,
+.mc-ofen-flamme img,
+.mc-ofen-pfeil img {
+  pointer-events: none;
+}
+
 .mc-body {
   min-height: 100%;
   margin: 0;

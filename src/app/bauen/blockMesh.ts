@@ -69,7 +69,9 @@ const FORMEN: Record<
     { x: 0, y: 0.245, z: -0.245, w: 0.98, h: 0.49, t: 0.49 },
   ],
   glasscheibe: [{ x: 0, y: 0, z: 0, w: 0.98, h: 0.98, t: 0.14 }],
-  tuer: [{ x: 0, y: 0, z: -0.42, w: 0.98, h: 0.98, t: 0.14 }],
+  // Türblatt wie in Minecraft: 1 breit, 2 hoch, 3/16 dick.
+  // Die Form ragt in die Zelle darüber, die beim Setzen freigehalten wird.
+  tuer: [{ x: 0, y: 0.5, z: -0.4, w: 0.98, h: 1.96, t: 0.19 }],
   zaun: [
     { x: 0, y: 0, z: 0, w: 0.24, h: 0.98, t: 0.24 },
     { x: 0, y: 0.18, z: 0, w: 0.98, h: 0.14, t: 0.14 },
