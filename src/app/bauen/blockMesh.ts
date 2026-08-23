@@ -69,9 +69,6 @@ const FORMEN: Record<
     { x: 0, y: 0.245, z: -0.245, w: 0.98, h: 0.49, t: 0.49 },
   ],
   glasscheibe: [{ x: 0, y: 0, z: 0, w: 0.98, h: 0.98, t: 0.14 }],
-  // Türblatt wie in Minecraft: 1 breit, 2 hoch, 3/16 dick.
-  // Die Form ragt in die Zelle darüber, die beim Setzen freigehalten wird.
-  tuer: [{ x: 0, y: 0.5, z: -0.4, w: 0.98, h: 1.96, t: 0.19 }],
   zaun: [
     { x: 0, y: 0, z: 0, w: 0.24, h: 0.98, t: 0.24 },
     { x: 0, y: 0.18, z: 0, w: 0.98, h: 0.14, t: 0.14 },
@@ -110,6 +107,36 @@ const MESH_TEXTUR: Record<string, string> = {
   steintreppe: "stein",
   glasscheibe: "glas",
   zaun: "holz",
+}
+
+// Türblatt wie in Minecraft: 1 breit, 2 hoch, 3/16 dick — und die
+// Angel sitzt am Rand, nicht in der Zellenmitte. Der Ursprung der
+// Geometrie IST die Angel, damit sich das Blatt darum dreht.
+export const TUER_BREITE = 0.98
+export const TUER_DICKE = 0.19
+
+export function tuerGeometrie(
+  THREE: typeof import("three"),
+  kante: number,
+  gespiegelt: boolean,
+) {
+  const geo = new THREE.BoxGeometry(
+    kante * TUER_BREITE,
+    kante * 1.96,
+    kante * TUER_DICKE,
+  )
+  // Blatt hängt seitlich an der Angel und ragt in die Zelle darüber
+  geo.translate(
+    (gespiegelt ? -1 : 1) * kante * (TUER_BREITE / 2),
+    kante * 0.5,
+    -kante * 0.4,
+  )
+  return geo
+}
+
+// Wo die Angel in der Zelle sitzt (Versatz zur Zellenmitte in Metern)
+export function tuerAngelVersatz(kante: number, gespiegelt: boolean): number {
+  return (gespiegelt ? 1 : -1) * kante * (TUER_BREITE / 2)
 }
 
 // Kein Cache: die Szenen entsorgen Geometrien beim Entfernen einzelner

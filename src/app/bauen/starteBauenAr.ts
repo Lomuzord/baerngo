@@ -14,6 +14,7 @@ import {
   blockObenInSpalte,
   type GesetzterBlock,
 } from "@/lib/bauen"
+import { tuerGespiegelt, tuerWinkel } from "@/lib/tuer"
 import {
   BLOCK_KANTE_METER,
   EBENE_RADIUS_ZELLEN,
@@ -27,6 +28,8 @@ import {
 } from "@/lib/spielflaeche"
 import { anzeigeArt,
   geometrieFuerBlock,
+  tuerAngelVersatz,
+  tuerGeometrie,
   entferneRiss,
   materialFuerBlock,
   materialienFuerWuerfel,
@@ -277,7 +280,9 @@ export async function starteBauenAr(
       if (!mesh) {
         const material = await materialienFuerWuerfel(THREE, block.gegenstandId)
         mesh = new THREE.Mesh(
-          geometrieFuerBlock(THREE, block.gegenstandId, kante),
+          block.gegenstandId === "tuer"
+            ? tuerGeometrie(THREE, kante, tuerGespiegelt(steuerung.bloecke(), block))
+            : geometrieFuerBlock(THREE, block.gegenstandId, kante),
           material,
         )
         mesh.userData.blockId = block.id
@@ -293,9 +298,21 @@ export async function starteBauenAr(
         mesh.material = await materialienFuerWuerfel(THREE, artJetzt)
       }
       if (block.gegenstandId === "tuer") {
-        mesh.rotation.y = strom.has(block.id) ? 1.25 : 0
+        // Doppeltüren hängen aussen: der rechte Flügel spiegelt.
+        const gespiegelt = tuerGespiegelt(steuerung.bloecke(), block)
+        if (mesh.userData.gespiegelt !== gespiegelt) {
+          mesh.userData.gespiegelt = gespiegelt
+          mesh.geometry.dispose()
+          mesh.geometry = tuerGeometrie(THREE, kante, gespiegelt)
+        }
+        mesh.rotation.y = tuerWinkel(strom.has(block.id), gespiegelt)
+        mesh.userData.angel = tuerAngelVersatz(kante, gespiegelt)
       }
-      const pose = poseVonZelle(block.zelle, ebene)
+      const roh = poseVonZelle(block.zelle, ebene)
+      const pose = {
+        ...roh,
+        x: roh.x + ((mesh.userData.angel as number | undefined) ?? 0),
+      }
       const startY =
         neu && block.fallStart
           ? poseVonZelle(block.fallStart, ebene).y + kante / 2
