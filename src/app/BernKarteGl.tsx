@@ -73,6 +73,10 @@ export function BernKarteGl({
   const richtungsIndex = useRef(-1)
   const pins = useRef<Map<string, HTMLElement>>(new Map())
   const hatZentriert = useRef(false)
+  // Sobald der Spieler die Karte selbst bewegt, hört das automatische
+  // Nachzentrieren auf — sonst reisst es einen beim nächsten GPS-Fix
+  // zurück. Der "Hier"-Knopf holt einen bewusst wieder zurück.
+  const nutzerHatBewegt = useRef(false)
   const onWaehleRef = useRef(onWaehle)
   onWaehleRef.current = onWaehle
   const gewaehltRef = useRef(gewaehltId)
@@ -262,6 +266,12 @@ export function BernKarteGl({
             }
           }
         }
+        map.on("movestart", (event) => {
+          // originalEvent gibt es nur bei echten Zeiger-/Rad-Gesten
+          if ((event as { originalEvent?: unknown }).originalEvent) {
+            nutzerHatBewegt.current = true
+          }
+        })
         map.on("click", (event) => {
           // Mit leerem Eimer auf die Aare tippen = Wasser schöpfen
           const jetzt = spielerRef.current
@@ -375,7 +385,11 @@ export function BernKarteGl({
       trainerStop,
       () => trainerRichtung(karte.current, spielerRef.current),
     )
-    if (spieler.status === "bereit" && !gewaehltRef.current) {
+    if (
+      spieler.status === "bereit" &&
+      !gewaehltRef.current &&
+      !nutzerHatBewegt.current
+    ) {
       const mitte = map.getCenter()
       const sprung = distanzMeter(spieler.lage, {
         lat: mitte.lat,
@@ -538,6 +552,9 @@ export function BernKarteGl({
   function zentriereAufMich() {
     const map = karte.current
     if (!map || spieler.status !== "bereit") return
+    // Bewusst zurück zum Spieler: ab jetzt darf die Karte wieder folgen
+    nutzerHatBewegt.current = false
+    hatZentriert.current = true
     map.easeTo({ ...kameraFuerSpieler(spieler.lage), duration: 600 })
   }
 
