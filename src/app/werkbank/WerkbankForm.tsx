@@ -142,11 +142,9 @@ export function WerkbankForm() {
     return r.cursor
   }, [])
 
-  // Touch-Bedienung wie gewünscht: kurzer Tipp legt EIN Stück ab,
-  // langes Drücken den ganzen Stapel (und nimmt umgekehrt die Hälfte).
-  const haltenSeit = useRef(0)
-  const LANG_MS = 400
-
+  // Touch-Bedienung: kurzer Tipp legt EIN Stück ab, langes Drücken den
+  // ganzen Stapel. Die Entscheidung trifft das Zieh-System im
+  // InventarRaster und reicht sie als "taste" herein.
   function tippeRaster(index: number) {
     // Klicks kurz nach einem Pointer-Griff sind Duplikate; echte
     // Tastatur-Klicks (Enter auf dem Knopf) kommen ohne Pointer davor.
@@ -156,21 +154,6 @@ export function WerkbankForm() {
     setCursor(rest)
   }
 
-  function rasterZeigerRunter() {
-    haltenSeit.current = performance.now()
-  }
-
-  function rasterZeigerHoch(index: number) {
-    const lang = performance.now() - haltenSeit.current >= LANG_MS
-    haltenSeit.current = 0
-    skipRasterKlick.current = performance.now()
-    // Mit leerer Hand nimmt jeder Tipp den ganzen Stapel auf; nur beim
-    // Ablegen unterscheiden wir kurz (eines) und lang (alles).
-    const taste = !cursorRef.current || lang ? "links" : "rechts"
-    const rest = legeAufRaster(index, cursorRef.current, taste)
-    setCursor(rest)
-    if (lang && cursorRef.current) spieleHaptik("wahl")
-  }
 
   function fuelleRezept(id: string) {
     const zurueck: { gegenstandId: string; anzahl: number }[] = []
@@ -268,11 +251,6 @@ export function WerkbankForm() {
                     if (event.button === 2) return
                     event.preventDefault()
                     event.currentTarget.setPointerCapture(event.pointerId)
-                    rasterZeigerRunter()
-                  }}
-                  onPointerUp={(event) => {
-                    if (event.button === 2) return
-                    rasterZeigerHoch(index)
                   }}
                   onClick={() => tippeRaster(index)}
                 >
@@ -325,9 +303,6 @@ export function WerkbankForm() {
                 ofen.eingabe,
                 "Erz / Stamm",
                 tippeRaster,
-                false,
-                rasterZeigerRunter,
-                rasterZeigerHoch,
               )}
               <span
                 className="mc-ofen-flamme"
@@ -353,9 +328,6 @@ export function WerkbankForm() {
                 ofen.brennstoff,
                 "Holz / Kohle",
                 tippeRaster,
-                false,
-                rasterZeigerRunter,
-                rasterZeigerHoch,
               )}
             </div>
             <span className="mc-ofen-pfeil" aria-label="Schmelz-Fortschritt">
@@ -376,8 +348,6 @@ export function WerkbankForm() {
               "Raus",
               tippeRaster,
               true,
-              rasterZeigerRunter,
-              rasterZeigerHoch,
             )}
           </div>
         ) : (
@@ -530,8 +500,6 @@ function ofenFachKnopf(
   label: string,
   onTipp: (index: number) => void,
   ausgabe = false,
-  runter?: () => void,
-  hoch?: (index: number) => void,
 ) {
   const item = slot ? gegenstandById(slot.id) : null
   return (
@@ -544,11 +512,6 @@ function ofenFachKnopf(
         if (event.button === 2) return
         event.preventDefault()
         event.currentTarget.setPointerCapture(event.pointerId)
-        runter?.()
-      }}
-      onPointerUp={(event) => {
-        if (event.button === 2) return
-        hoch?.(index)
       }}
       onClick={() => onTipp(index)}
     >

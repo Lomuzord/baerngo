@@ -34,7 +34,11 @@ export function InventarRaster({
   onCursor: (cursor: Cursor | null) => void
   wahlIndex?: number | null
   onWahl?: (index: number) => void
-  onCraftDrop?: (index: number, cursor: Cursor | null) => Cursor | null
+  onCraftDrop?: (
+    index: number,
+    cursor: Cursor | null,
+    taste?: "links" | "rechts",
+  ) => Cursor | null
   klasse?: string
 }) {
   const slotsRef = useRef(slots)
@@ -47,6 +51,8 @@ export function InventarRaster({
     y: number
     aktiv: boolean
     quelle: "inv" | "craft"
+    // Wann der Finger aufsetzte — kurz = ein Stück, lang = Stapel
+    zeit?: number
   } | null>(null)
   const lang = useRef<number>(0)
   const gestenSperre = useRef(false)
@@ -90,6 +96,7 @@ export function InventarRaster({
         y: event.clientY,
         aktiv: false,
         quelle: "craft",
+        zeit: performance.now(),
       }
       zeiger.current = { x: event.clientX, y: event.clientY }
       setAmFinger(true)
@@ -142,7 +149,20 @@ export function InventarRaster({
         // ein leerer Tipp neben dem Raster darf über den Näherungs-
         // Fallback keine Zelle leerräumen.
         if (cursorRef.current || start?.quelle === "craft") {
-          cursorRef.current = onCraftDrop(craft, cursorRef.current)
+          // Kurzer Tipp mit Item in der Hand legt genau ein Stück ab;
+          // langes Halten und echtes Ziehen den ganzen Stapel.
+          const kurz =
+            Boolean(cursorRef.current) &&
+            start != null &&
+            start.quelle === "craft" &&
+            !start.aktiv &&
+            start.von === craft &&
+            performance.now() - (start.zeit ?? 0) < 400
+          cursorRef.current = onCraftDrop(
+            craft,
+            cursorRef.current,
+            kurz ? "rechts" : "links",
+          )
           onCursor(cursorRef.current)
           return
         }
