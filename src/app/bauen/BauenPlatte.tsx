@@ -69,30 +69,16 @@ export function BauenPlatte() {
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
   const [lebensgross, setLebensgross] = useState(false)
-  const [verdeckung, setVerdeckung] = useState(false)
-  // Klartext-Zustand der AR-Verdeckung, dauerhaft im HUD sichtbar
-  const [tiefeStatus, setTiefeStatus] = useState("")
-  const tiefeVorschau = useRef<HTMLCanvasElement>(null)
+  // Verdeckung ist vorerst abgeschaltet: die Tiefenschätzung des
+  // Geräts war in der Praxis zu grob, Blöcke wirkten zerfressen.
+  // Der Unterbau bleibt — ein neuer Anlauf braucht nur diesen Schalter.
+  const verdeckung = false
 
   useEffect(() => {
     setLebensgross(
       window.localStorage.getItem("baerngo-ar-lebensgross") === "1",
     )
-    setVerdeckung(
-      window.localStorage.getItem("baerngo-ar-verdeckung") === "1",
-    )
   }, [])
-
-  function schalteVerdeckung() {
-    setVerdeckung((bisher) => {
-      const danach = !bisher
-      window.localStorage.setItem(
-        "baerngo-ar-verdeckung",
-        danach ? "1" : "0",
-      )
-      return danach
-    })
-  }
 
   function schalteLebensgross() {
     setLebensgross((bisher) => {
@@ -355,18 +341,13 @@ export function BauenPlatte() {
                 ? "Lauf einfach hinein — die Blöcke stehen in echter Grösse um dich."
                 : "Tippe dorthin, wo der Block hin soll — nicht in die Bildmitte.",
             ),
-          aufTiefe: (text) => setTiefeStatus(text),
           aufEnde: () => {
             sitzung.current = null
             setArStatus("bereit")
             setHinweis("AR beendet. Weiter auf der Tischplatte.")
           },
         },
-        {
-          lebensgross,
-          verdeckung,
-          tiefenVorschau: tiefeVorschau.current,
-        },
+        { lebensgross, verdeckung },
       )
       setArStatus("an")
       spieleHaptik("ar")
@@ -493,31 +474,8 @@ export function BauenPlatte() {
             >
               {lebensgross ? "✓ Lebensgross · 1 m" : "Lebensgross · 1 m"}
             </button>
-            <button
-              type="button"
-              className={
-                verdeckung ? "mc-btn mc-btn-toggle mc-btn-an" : "mc-btn mc-btn-toggle"
-              }
-              aria-pressed={verdeckung}
-              onClick={schalteVerdeckung}
-              title="Blöcke verschwinden hinter echten Dingen"
-            >
-              {verdeckung ? "✓ Verdeckung" : "Verdeckung"}
-            </button>
           </div>
         ) : null}
-        {arStatus === "an" && verdeckung && tiefeStatus ? (
-          <p className="mc-tiefe-status">{tiefeStatus}</p>
-        ) : null}
-        <canvas
-          ref={tiefeVorschau}
-          className={
-            arStatus === "an" && verdeckung
-              ? "mc-tiefe-bild"
-              : "mc-tiefe-bild mc-tiefe-bild-aus"
-          }
-          aria-label="Tiefenbild"
-        />
         {arStatus === "an" ? (
           <button
             type="button"

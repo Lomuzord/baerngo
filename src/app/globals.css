@@ -515,28 +515,42 @@
 }
 
 .mc-himmel-regen {
+  /* Kurze fallende Striche statt durchgehender Linien: jede Kachel
+     enthält einen Tropfen-Strich mit viel Luft darunter, leicht
+     geneigt wie echter Regen. */
   background-image:
-    repeating-linear-gradient(
-      105deg,
-      transparent 0 10px,
-      rgba(190, 220, 250, 0.35) 10px 11px,
-      transparent 11px 26px
+    linear-gradient(
+      to bottom,
+      rgba(200, 226, 252, 0.55) 0,
+      rgba(200, 226, 252, 0.18) 14px,
+      transparent 14px
     ),
-    repeating-linear-gradient(
-      100deg,
-      transparent 0 17px,
-      rgba(160, 200, 245, 0.25) 17px 18px,
-      transparent 18px 41px
+    linear-gradient(
+      to bottom,
+      rgba(170, 205, 245, 0.4) 0,
+      rgba(170, 205, 245, 0.12) 10px,
+      transparent 10px
     );
-  animation: mc-regen-fall 0.7s linear infinite;
+  background-size:
+    3px 84px,
+    2px 62px;
+  background-position:
+    0 0,
+    17px 31px;
+  transform: skewX(-8deg) scale(1.15);
+  animation: mc-regen-fall 0.55s linear infinite;
 }
 
 @keyframes mc-regen-fall {
   from {
-    background-position: 0 0, 0 0;
+    background-position:
+      0 0,
+      17px 31px;
   }
   to {
-    background-position: -18px 70px, -12px 52px;
+    background-position:
+      0 84px,
+      17px 93px;
   }
 }
 
