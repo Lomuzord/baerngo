@@ -3,68 +3,6 @@ import { gegenstandById } from "@/lib/gegenstaende"
 
 const cache = new Map<string, unknown>()
 
-// ---- Verdeckung (AR-Tiefe) -------------------------------------------
-// Alle Block-Materialien teilen sich diese Uniforms. Die AR-Schleife
-// füllt sie pro Bild; ist "an" 0, kostet das nichts und ändert nichts.
-export const TIEFE_UNIFORMS = {
-  tiefeKarte: { value: null as unknown },
-  // Bildkoordinaten -> Tiefenbild (kommt so vom Gerät)
-  tiefeUv: { value: new Float32Array(16) },
-  // Sichtfeld in Pixeln: x, y, Breite, Höhe
-  tiefeFeld: { value: new Float32Array([0, 0, 1, 1]) },
-  // x: Rohwert -> Meter, y: an/aus, z: Toleranz-Anteil der Entfernung
-  tiefeWerte: { value: new Float32Array([0.001, 0, 0.04, 0]) },
-}
-
-// Baut den Tiefentest in ein Material ein: Bildpunkte, vor denen etwas
-// Echtes steht, werden verworfen.
-function verpasseTiefe(material: { onBeforeCompile: unknown }) {
-  ;(material as {
-    onBeforeCompile: (shader: {
-      uniforms: Record<string, unknown>
-      vertexShader: string
-      fragmentShader: string
-    }) => void
-  }).onBeforeCompile = (shader) => {
-    shader.uniforms.tiefeKarte = TIEFE_UNIFORMS.tiefeKarte
-    shader.uniforms.tiefeUv = TIEFE_UNIFORMS.tiefeUv
-    shader.uniforms.tiefeFeld = TIEFE_UNIFORMS.tiefeFeld
-    shader.uniforms.tiefeWerte = TIEFE_UNIFORMS.tiefeWerte
-
-    shader.vertexShader =
-      "varying float vTiefeAbstand;\n" +
-      shader.vertexShader.replace(
-        "#include <project_vertex>",
-        "#include <project_vertex>\n  vTiefeAbstand = -mvPosition.z;",
-      )
-
-    shader.fragmentShader =
-      `uniform sampler2D tiefeKarte;
-uniform mat4 tiefeUv;
-uniform vec4 tiefeFeld;
-uniform vec4 tiefeWerte;
-varying float vTiefeAbstand;
-` +
-      shader.fragmentShader.replace(
-        "void main() {",
-        `void main() {
-  if (tiefeWerte.y > 0.5) {
-    vec2 imBild = (gl_FragCoord.xy - tiefeFeld.xy) / tiefeFeld.zw;
-    vec2 tuv = (tiefeUv * vec4(imBild, 0.0, 1.0)).xy;
-    if (tuv.x >= 0.0 && tuv.x <= 1.0 && tuv.y >= 0.0 && tuv.y <= 1.0) {
-      vec2 roh = texture2D(tiefeKarte, tuv).rg;
-      float echt = (roh.r * 255.0 + roh.g * 255.0 * 256.0) * tiefeWerte.x;
-      // 0 heisst "nicht gemessen" — dann nichts wegschneiden.
-      // Toleranz wächst mit der Entfernung: nah genau, weit ungenau.
-      // So schneidet sich eine Platte auf dem Boden nicht selbst,
-      // aber eine Person davor schneidet die Platte hinter ihr weg.
-      float tol = clamp(echt * tiefeWerte.z, 0.05, 0.35);
-      if (echt > 0.05 && echt < vTiefeAbstand - tol) discard;
-    }
-  }`,
-      )
-  }
-}
 
 export async function materialFuerBlock(
   THREE: typeof import("three"),
@@ -91,7 +29,6 @@ export async function materialFuerBlock(
       ? { transparent: true, alphaTest: 0.5 }
       : {}),
   })
-  verpasseTiefe(material)
   cache.set(gegenstandId, material)
   return material
 }

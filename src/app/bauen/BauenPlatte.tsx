@@ -69,10 +69,6 @@ export function BauenPlatte() {
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
   const [lebensgross, setLebensgross] = useState(false)
-  // Verdeckung ist vorerst abgeschaltet: die Tiefenschätzung des
-  // Geräts war in der Praxis zu grob, Blöcke wirkten zerfressen.
-  // Der Unterbau bleibt — ein neuer Anlauf braucht nur diesen Schalter.
-  const verdeckung = false
 
   useEffect(() => {
     setLebensgross(
@@ -347,7 +343,7 @@ export function BauenPlatte() {
             setHinweis("AR beendet. Weiter auf der Tischplatte.")
           },
         },
-        { lebensgross, verdeckung },
+        { lebensgross },
       )
       setArStatus("an")
       spieleHaptik("ar")

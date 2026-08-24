@@ -4,11 +4,6 @@ import {
   type AbbauStand,
 } from "@/lib/abbauen"
 import {
-  TIEFE_TOLERANZ_ANTEIL,
-  tiefeMoeglich,
-  tiefenOptionen,
-} from "@/lib/tiefe"
-import {
   ndcVonViewport,
   webXrFeatures,
   webXrModus,
@@ -33,7 +28,6 @@ import {
 } from "@/lib/spielflaeche"
 import { anzeigeArt,
   geometrieFuerBlock,
-  TIEFE_UNIFORMS,
   tuerAngelVersatz,
   tuerGeometrie,
   entferneRiss,
@@ -59,19 +53,12 @@ export type ArSteuerung = {
 export type ArMeldungen = {
   aufPlatte?: () => void
   aufEnde?: () => void
-  // Laufende Klartext-Meldung zum Zustand der Verdeckung
-  aufTiefe?: (text: string) => void
 }
 
 export type ArOptionen = {
   // true: Blöcke in Lebensgrösse (1 m) wie im echten Minecraft,
   // false: Tischplatte mit 16-cm-Blöcken.
   lebensgross?: boolean
-  // true: echte Verdeckung — Blöcke verschwinden hinter Menschen,
-  // Wänden und Möbeln, statt über dem Kamerabild zu kleben.
-  verdeckung?: boolean
-  // Kleines Vorschaubild des Tiefenbilds (zum Prüfen der Ausrichtung)
-  tiefenVorschau?: HTMLCanvasElement | null
 }
 
 export async function starteBauenAr(
@@ -90,16 +77,9 @@ export async function starteBauenAr(
   const THREE = await import("three")
   const session = await xr.requestSession(modus, {
     requiredFeatures: webXrFeatures(),
-    optionalFeatures: [
-      "dom-overlay",
-      "plane-detection",
-      "light-estimation",
-      // Verdeckung: echte Tiefe pro Bildpunkt vom ARCore-Sensor
-      ...(optionen.verdeckung ? ["depth-sensing"] : []),
-    ],
-    ...(optionen.verdeckung ? { depthSensing: tiefenOptionen() } : {}),
+    optionalFeatures: ["dom-overlay", "plane-detection", "light-estimation"],
     domOverlay: { root: overlay },
-  } as XRSessionInit)
+  })
 
   // Langdruck beim Abbauen darf im DOM-Overlay weder Textauswahl noch
   // Kontextmenü auslösen — CSS allein reicht auf Android Chrome nicht
@@ -168,12 +148,6 @@ export async function starteBauenAr(
     throw new Error("AR-Sitzung wurde schon beendet")
   }
   let flaechenTreffer: { x: number; y: number; z: number } | null = null
-  // Verdeckung: Tiefenbild des Geräts als kleine Textur, die alle
-  // Block-Materialien im Shader abfragen.
-  let tiefenTextur: InstanceType<typeof THREE.DataTexture> | null = null
-  let tiefeGemeldet = false
-  let tiefeKaputt = false
-  let letzteTiefeMeldung = ""
 
   const szene = new THREE.Scene()
   const kamera = new THREE.PerspectiveCamera()
@@ -697,174 +671,16 @@ export async function starteBauenAr(
       letzteBloeckeListe = aktuelle
       void zeichneBloecke()
     }
-    pflegeVerdeckung(frame)
     renderer.render(szene, kamera)
   }
 
 
-  // Liest das Tiefenbild des Geräts und legt es allen Block-Shadern
-  // hin. ARCore liefert pro Bildpunkt Millimeter in zwei Bytes.
-  // Malt das Tiefenbild klein ins HUD: nah = rot, fern = blau.
-  // Damit sieht man sofort, ob es zur Kameraansicht passt oder
-  // gedreht/gespiegelt ankommt.
-  let vorschauZaehler = 0
-  function zeigeTiefenbild(
-    bytes: Uint8Array,
-    breite: number,
-    hoehe: number,
-    rohZuMeter: number,
-  ) {
-    const leinwand = optionen.tiefenVorschau
-    if (!leinwand) return
-    // Nur alle paar Bilder — das reicht fürs Auge und spart Rechenzeit
-    if (vorschauZaehler++ % 6 !== 0) return
-    if (leinwand.width !== breite || leinwand.height !== hoehe) {
-      leinwand.width = breite
-      leinwand.height = hoehe
-    }
-    const ctx = leinwand.getContext("2d")
-    if (!ctx) return
-    const bild = ctx.createImageData(breite, hoehe)
-    for (let i = 0; i < breite * hoehe; i++) {
-      const meter = (bytes[i * 2]! + bytes[i * 2 + 1]! * 256) * rohZuMeter
-      const anteil = Math.max(0, Math.min(1, meter / 5))
-      bild.data[i * 4] = Math.round(255 * (1 - anteil))
-      bild.data[i * 4 + 1] = Math.round(120 * (1 - Math.abs(anteil - 0.5) * 2))
-      bild.data[i * 4 + 2] = Math.round(255 * anteil)
-      bild.data[i * 4 + 3] = meter > 0 ? 235 : 0
-    }
-    ctx.putImageData(bild, 0, 0)
-  }
-
-  function melde(text: string) {
-    if (text === letzteTiefeMeldung) return
-    letzteTiefeMeldung = text
-    meldungen.aufTiefe?.(text)
-  }
-
-  function pflegeVerdeckung(frame: XRFrame | undefined) {
-    if (!optionen.verdeckung || tiefeKaputt) return
-    tiefeGemeldet = true
-    const werte = TIEFE_UNIFORMS.tiefeWerte.value
-    werte[1] = 0
-    const sitzung = session as unknown as {
-      enabledFeatures?: readonly string[]
-      depthUsage?: string
-      depthDataFormat?: string
-    }
-    if (!sitzung.enabledFeatures?.includes("depth-sensing")) {
-      melde("Tiefe: vom Gerät nicht freigegeben")
-      return
-    }
-    if (!tiefeMoeglich(session as never)) {
-      melde(`Tiefe: falscher Modus (${sitzung.depthUsage ?? "?"})`)
-      return
-    }
-    if (!frame) return
-    try {
-      const referenz = renderer.xr.getReferenceSpace()
-      if (!referenz) return
-      const pose = frame.getViewerPose(referenz)
-      const sicht = pose?.views[0]
-      if (!sicht) return
-      type CpuTiefe = {
-        data: ArrayBuffer
-        width: number
-        height: number
-        rawValueToMeters: number
-        normDepthBufferFromNormView: { matrix: Float32Array }
-      }
-      const holen = (
-        frame as unknown as {
-          getDepthInformation?: (sicht: XRView) => CpuTiefe | null
-        }
-      ).getDepthInformation
-      if (typeof holen !== "function") {
-        melde("Tiefe: getDepthInformation fehlt")
-        return
-      }
-      const info = holen.call(frame, sicht)
-      if (!info || !info.width || !info.height) {
-        melde("Tiefe: keine Daten in diesem Bild")
-        return
-      }
-
-      const bytes = new Uint8Array(info.data)
-      if (
-        !tiefenTextur ||
-        tiefenTextur.image.width !== info.width ||
-        tiefenTextur.image.height !== info.height
-      ) {
-        tiefenTextur?.dispose()
-        tiefenTextur = new THREE.DataTexture(
-          bytes,
-          info.width,
-          info.height,
-          THREE.RGFormat,
-          THREE.UnsignedByteType,
-        )
-        // Nicht glätten: die zwei Bytes sind eine Zahl, kein Farbwert.
-        tiefenTextur.magFilter = THREE.NearestFilter
-        tiefenTextur.minFilter = THREE.NearestFilter
-        tiefenTextur.generateMipmaps = false
-        tiefenTextur.unpackAlignment = 1
-        TIEFE_UNIFORMS.tiefeKarte.value = tiefenTextur
-      } else {
-        tiefenTextur.image.data = bytes
-      }
-      tiefenTextur.needsUpdate = true
-
-      TIEFE_UNIFORMS.tiefeUv.value.set(info.normDepthBufferFromNormView.matrix)
-      // Sichtfeld: Chrome nutzt eine Projektions-Ebene, dann ist
-      // renderState.baseLayer LEER. Die XR-Kamera von three kennt das
-      // echte Feld in jedem Fall — sie ist die verlässliche Quelle.
-      const ziel = TIEFE_UNIFORMS.tiefeFeld.value
-      const xrKamera = renderer.xr.getCamera() as unknown as {
-        cameras?: { viewport?: { x: number; y: number; z: number; w: number } }[]
-      }
-      const sichtFeld = xrKamera.cameras?.[0]?.viewport
-      const ausEbene = session.renderState.baseLayer?.getViewport(sicht)
-      if (sichtFeld && sichtFeld.z > 0 && sichtFeld.w > 0) {
-        ziel[0] = sichtFeld.x
-        ziel[1] = sichtFeld.y
-        ziel[2] = sichtFeld.z
-        ziel[3] = sichtFeld.w
-      } else if (ausEbene && ausEbene.width > 0 && ausEbene.height > 0) {
-        ziel[0] = ausEbene.x
-        ziel[1] = ausEbene.y
-        ziel[2] = ausEbene.width
-        ziel[3] = ausEbene.height
-      } else {
-        melde("Tiefe: kein Sichtfeld gefunden")
-        return
-      }
-      werte[0] = info.rawValueToMeters
-      werte[1] = 1
-      werte[2] = TIEFE_TOLERANZ_ANTEIL
-      zeigeTiefenbild(bytes, info.width, info.height, info.rawValueToMeters)
-      melde(
-        `Tiefe aktiv · ${info.width}×${info.height} · Feld ${Math.round(
-          ziel[2],
-        )}×${Math.round(ziel[3])}`,
-      )
-    } catch (fehler) {
-      // Ein einziger Fehlversuch darf die Sitzung nicht kippen —
-      // Verdeckung bleibt dann für diese Sitzung einfach aus.
-      tiefeKaputt = true
-      werte[1] = 0
-      melde(`Tiefe: Fehler — ${String(fehler).slice(0, 60)}`)
-    }
-  }
 
   spaeterAbbau = () => {
     overlay.removeEventListener("pointerdown", aufOverlayDown)
     overlay.removeEventListener("pointermove", aufOverlayMove)
     overlay.removeEventListener("pointerup", aufOverlayUp)
     overlay.removeEventListener("pointercancel", aufOverlayUp)
-    TIEFE_UNIFORMS.tiefeWerte.value[1] = 0
-    TIEFE_UNIFORMS.tiefeKarte.value = null
-    tiefenTextur?.dispose()
-    tiefenTextur = null
     renderer.setAnimationLoop(null)
     try {
       hitQuelle?.cancel()
