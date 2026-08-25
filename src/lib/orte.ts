@@ -127,7 +127,8 @@ const ORTE: readonly SehenswuerdigkeitKarte[] = [
     id: "gibb",
     name: "GIBB Bern",
     alias: ["gibb", "Berufsfachschule Bern", "Lorrainestrasse"],
-    lage: { lat: 46.9546, lng: 7.44467 },
+    // Campus-Gebäude an der Lorrainestrasse 5 (Koordinate aus OSM)
+    lage: { lat: 46.95606, lng: 7.44438 },
   },
 ]
 
