@@ -126,6 +126,9 @@ export async function startePlattenSzene(
   let rotY = 0.72
   let polar = 0.38
   let abstand = 2.7
+  // Alle aktiven Finger — zwei Finger = Pinch-Zoom
+  const finger = new Map<number, { x: number; y: number }>()
+  let pinchAbstand = 0
   let ziehen = false
   let startX = 0
   let startY = 0
@@ -370,6 +373,16 @@ export async function startePlattenSzene(
   }
 
   const onDown = (event: PointerEvent) => {
+    finger.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (finger.size === 2) {
+      // Zweiter Finger: ab jetzt wird gezoomt, nicht gebaut
+      const [a, b] = [...finger.values()]
+      pinchAbstand = Math.hypot(a!.x - b!.x, a!.y - b!.y)
+      hatGezogen = true
+      visier.visible = false
+      brichAbbau()
+      return
+    }
     ziehen = true
     hatGezogen = false
     hatGehalten = false
@@ -383,6 +396,19 @@ export async function startePlattenSzene(
     else brichAbbau()
   }
   const onMove = (event: PointerEvent) => {
+    if (finger.has(event.pointerId)) {
+      finger.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    }
+    if (finger.size >= 2) {
+      // Pinch: Abstand der Finger steuert die Kamera-Distanz
+      const [a, b] = [...finger.values()]
+      const neu = Math.hypot(a!.x - b!.x, a!.y - b!.y)
+      if (pinchAbstand > 0 && neu > 0) {
+        abstand = Math.min(7, Math.max(1.1, abstand * (pinchAbstand / neu)))
+      }
+      pinchAbstand = neu
+      return
+    }
     const dx = event.clientX - lastX
     const dy = event.clientY - lastY
     lastX = event.clientX
@@ -403,9 +429,11 @@ export async function startePlattenSzene(
       return
     }
     rotY -= dx * 0.008
-    polar = Math.min(1.05, Math.max(0.16, polar + dy * 0.006))
+    polar = Math.min(1.45, Math.max(0.06, polar + dy * 0.006))
   }
   const onUp = (event: PointerEvent) => {
+    finger.delete(event.pointerId)
+    pinchAbstand = 0
     if (!ziehen) return
     ziehen = false
     if (abbauId && performance.now() - abbauStart > 250) hatGehalten = true
@@ -419,7 +447,7 @@ export async function startePlattenSzene(
   }
   const onWheel = (event: WheelEvent) => {
     event.preventDefault()
-    abstand = Math.min(4.6, Math.max(1.7, abstand + event.deltaY * 0.003))
+    abstand = Math.min(7, Math.max(1.1, abstand + event.deltaY * 0.003))
   }
 
   leinwand.addEventListener("pointerdown", onDown)

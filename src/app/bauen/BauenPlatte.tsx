@@ -25,6 +25,7 @@ import { berechneStrom, istSchaltbar } from "@/lib/redstone"
 import { useBauen } from "../useBauen"
 import { stasheBeute, useInventar } from "../useInventar"
 import { usePickel } from "../usePickel"
+import { kannQuickLook, oeffneInQuickLook } from "./quickLook"
 import { starteBauenAr } from "./starteBauenAr"
 import { startePlattenSzene, type PlattenSteuerung } from "./startePlattenSzene"
 
@@ -68,6 +69,12 @@ export function BauenPlatte() {
   const { haltbarkeitFuer, setzeHaltbarkeitFuer, maximumFuer } = usePickel()
   const [wahlIndex, setWahlIndex] = useState<number | null>(null)
   const [arStatus, setArStatus] = useState<"aus" | "an" | "bereit">("aus")
+  // iPhone: kein WebXR, aber Apples nativer AR-Viewer (Quick Look)
+  const [quickLook, setQuickLook] = useState(false)
+  const [quickLookLaeuft, setQuickLookLaeuft] = useState(false)
+  useEffect(() => {
+    setQuickLook(kannQuickLook())
+  }, [])
   const [lebensgross, setLebensgross] = useState(false)
 
   useEffect(() => {
@@ -451,6 +458,27 @@ export function BauenPlatte() {
             )
           })}
         </ol>
+        {quickLook ? (
+          <button
+            type="button"
+            className="mc-btn mc-platte-ar"
+            disabled={quickLookLaeuft}
+            onClick={() => {
+              setQuickLookLaeuft(true)
+              oeffneInQuickLook(
+                bloecke,
+                strom,
+                lebensgross ? 1 : 0.16,
+              )
+                .catch(() =>
+                  setHinweis("AR-Ansicht hat nicht geklappt — nochmal tippen."),
+                )
+                .finally(() => setQuickLookLaeuft(false))
+            }}
+          >
+            {quickLookLaeuft ? "…" : "📱 Bauwerk in AR ansehen"}
+          </button>
+        ) : null}
         {arStatus === "bereit" ? (
           <div className="mc-ar-startzeile">
             <button
