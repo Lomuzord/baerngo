@@ -12,6 +12,41 @@ import type { Lage } from "@/lib/katalog"
 import { distanzMeter, naechsterBlick } from "@/lib/reichweite"
 
 const SPEICHER = "baerngo-letzte-lage"
+const NEUSTART = "baerngo-ort-neustart"
+
+// iOS Safari zeigt den Standort-Dialog oft NUR, wenn die Abfrage
+// direkt aus einer Nutzergeste kommt — ein Aufruf beim Laden der
+// Seite wird dort gern stillschweigend verschluckt. Diese Funktion
+// gehört darum in einen Tipp-Handler; bei Erfolg startet das GPS-Abo
+// neu und übernimmt den frischen Fix.
+export function fordereStandortAn(rueckmeldung?: {
+  aufErlaubt?: () => void
+  aufVerweigert?: () => void
+  aufFehler?: () => void
+}) {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    rueckmeldung?.aufFehler?.()
+    return
+  }
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      schreibeLetzteLage({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      })
+      window.dispatchEvent(new Event(NEUSTART))
+      rueckmeldung?.aufErlaubt?.()
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        rueckmeldung?.aufVerweigert?.()
+      } else {
+        rueckmeldung?.aufFehler?.()
+      }
+    },
+    { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
+  )
+}
 
 export type SpielerOrt =
   | { status: "suche" }
@@ -47,6 +82,15 @@ export function useSpielerOrt(): SpielerOrt {
 
 function useSpielerOrtQuelle(aktiv: boolean): SpielerOrt {
   const [ort, setOrt] = useState<SpielerOrt>(leseLetzteLage)
+  // Zählt hoch, wenn der Spieler den Standort per Knopf neu anfordert —
+  // das GPS-Abo startet dann frisch (wichtig nach erteilter Erlaubnis).
+  const [lauf, setLauf] = useState(0)
+
+  useEffect(() => {
+    const neu = () => setLauf((bisher) => bisher + 1)
+    window.addEventListener(NEUSTART, neu)
+    return () => window.removeEventListener(NEUSTART, neu)
+  }, [])
 
   useEffect(() => {
     if (!aktiv) return
@@ -156,7 +200,7 @@ function useSpielerOrtQuelle(aktiv: boolean): SpielerOrt {
       navigator.geolocation.clearWatch(watchId)
       window.clearInterval(tick)
     }
-  }, [aktiv])
+  }, [aktiv, lauf])
 
   return ort
 }

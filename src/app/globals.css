@@ -2166,3 +2166,10 @@
 .mc-tiefe-bild-aus {
   display: none;
 }
+
+/* Standort-Anfrage-Knopf im Status-Balken */
+.mc-ort-knopf {
+  display: block;
+  margin: 0.4rem auto 0;
+  font-size: 0.95rem;
+}

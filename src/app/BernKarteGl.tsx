@@ -54,7 +54,7 @@ import { maleIsoWuerfel } from "./maleIsoWuerfel"
 import { starteTrainerSzene, type TrainerRichtung } from "./starteTrainerSzene"
 import { WetterHimmel } from "./WetterHimmel"
 import { stasheBeute, useInventar } from "./useInventar"
-import { useSpielerOrt } from "./useSpielerOrt"
+import { fordereStandortAn, useSpielerOrt } from "./useSpielerOrt"
 import { useWildspawn } from "./useWildspawn"
 
 export function BernKarteGl({
@@ -82,6 +82,7 @@ export function BernKarteGl({
   const gewaehltRef = useRef(gewaehltId)
   gewaehltRef.current = gewaehltId
   const [hinweis, setHinweis] = useState<string | null>(null)
+  const [ortHinweis, setOrtHinweis] = useState<string | null>(null)
   const [karteBereit, setKarteBereit] = useState(false)
   // Zählt hoch, wenn der WebGL-Kontext der Karte verloren geht —
   // der Init-Effekt baut die Karte dann komplett neu auf.
@@ -641,13 +642,36 @@ export function BernKarteGl({
         </div>
       ) : null}
       {spieler.status !== "bereit" ? (
-        <p className="mc-ort-status" data-testid="spieler-ort">
-          {spieler.status === "verweigert"
-            ? "Standort blockiert — erlaube den Ort"
-            : spieler.status === "fehler"
-              ? "Standort nicht verfügbar"
-              : "Suche Standort…"}
-        </p>
+        <div className="mc-ort-status" data-testid="spieler-ort">
+          {ortHinweis ??
+            (spieler.status === "verweigert"
+              ? "Standort blockiert — erlaube den Ort"
+              : spieler.status === "fehler"
+                ? "Standort nicht verfügbar"
+                : "Suche Standort…")}
+          {/* iOS Safari zeigt den Erlaubnis-Dialog zuverlässig nur,
+              wenn die Abfrage aus einem Tipp kommt — darum der Knopf. */}
+          <button
+            type="button"
+            className="mc-btn mc-ort-knopf"
+            onClick={() => {
+              setOrtHinweis("Frage Standort an …")
+              fordereStandortAn({
+                aufErlaubt: () => setOrtHinweis(null),
+                aufVerweigert: () =>
+                  setOrtHinweis(
+                    "Abgelehnt. iPhone: Einstellungen → Datenschutz → Ortungsdienste → Safari-Websites → \u201eBeim Verwenden erlauben\u201c, dann Seite neu laden.",
+                  ),
+                aufFehler: () =>
+                  setOrtHinweis(
+                    "Kein Standort bekommen — GPS an? Dann nochmal tippen.",
+                  ),
+              })
+            }}
+          >
+            📍 Standort erlauben
+          </button>
+        </div>
       ) : (
         <p className="sr-only" data-testid="spieler-ort">
           Standort bereit
