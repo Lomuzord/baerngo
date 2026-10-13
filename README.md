@@ -16,8 +16,7 @@ npm test
 npm run dev
 ```
 
-Live on the personal Cloudflare account:
-**https://baerngo.supershadowcube.workers.dev**
+Live: **https://bärngo.live** (Punycode `xn--brngo-gra.live`, Domain via GitHub Student Developer Pack at Name.com, DNS on Cloudflare). Fallback: https://baerngo.supershadowcube.workers.dev
 
 ```bash
 # MAPBOX_TOKEN is a Worker secret, never committed

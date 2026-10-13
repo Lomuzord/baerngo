@@ -16,5 +16,13 @@
   ],
   "observability": {
     "enabled": true
-  }
-}
+  },
+  // bärngo.live (Punycode xn--brngo-gra.live) — Custom Domains werden beim Deploy angelegt,
+  // sobald die Zone im Cloudflare-Konto aktiv ist.
+  "workers_dev": true,
+  // Zonen-Routen statt Custom Domains: funktionieren auch mit den von Name.com importierten
+  // (proxied) DNS-Einträgen. Sobald diese gelöscht sind, auf "custom_domain": true umstellen.
+  "routes": [
+    { "pattern": "xn--brngo-gra.live/*", "zone_id": "bcb5044f20006b4e449495c628b76e46" },
+    { "pattern": "www.xn--brngo-gra.live/*", "zone_id": "bcb5044f20006b4e449495c628b76e46" }
+  ]}
