@@ -2074,6 +2074,26 @@
   touch-action: none;
 }
 
+/* Zustandszeile in AR: zeigt auf dem Gerät, woran AR scheitert */
+.mc-ar-diagnose {
+  display: none;
+}
+
+.mc-ar-live .mc-ar-diagnose {
+  display: block;
+  position: absolute;
+  top: calc(0.4rem + env(safe-area-inset-top));
+  left: 0.4rem;
+  right: 0.4rem;
+  margin: 0;
+  padding: 0.2rem 0.4rem;
+  background: #000a;
+  color: #ffe9c7;
+  font: 0.62rem/1.3 ui-monospace, monospace;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
 .mc-ar-live .mc-ar-hud {
   background: none;
   padding: 0.4rem;

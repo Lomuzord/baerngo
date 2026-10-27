@@ -64,6 +64,12 @@ export type ArOptionen = {
   // true: Blöcke in Lebensgrösse (1 m) wie im echten Minecraft,
   // false: Tischplatte mit 16-cm-Blöcken.
   lebensgross?: boolean
+  // "basis": klassische XRWebGLLayer, die jedes WebXR-Chrome kann.
+  // "projektion": WebXR-Layers — three nimmt sie von selbst, sobald der
+  // Browser sie anbietet; damit blieb das Bild auf dem Handy leer.
+  xrEbene?: "basis" | "projektion"
+  // Zustandszeile im HUD: zeigt auf dem Gerät, woran AR scheitert
+  diagnose?: HTMLElement | null
 }
 
 export async function starteBauenAr(
@@ -117,12 +123,28 @@ export async function starteBauenAr(
   renderer.setSize(overlay.ownerDocument.documentElement.clientWidth, overlay.ownerDocument.documentElement.clientHeight, false)
   renderer.xr.enabled = true
   renderer.xr.setReferenceSpaceType("local-floor")
+  // three prüft beim Start nur, ob es createProjectionLayer gibt. Für
+  // die klassische Ebene die Methode so lange verstecken.
+  const bindung = (window as { XRWebGLBinding?: { prototype: object } })
+    .XRWebGLBinding
+  const projektion = bindung
+    ? Object.getOwnPropertyDescriptor(bindung.prototype, "createProjectionLayer")
+    : undefined
+  const versteckt = Boolean(projektion && optionen.xrEbene !== "projektion")
+  if (versteckt && bindung) {
+    delete (bindung.prototype as { createProjectionLayer?: unknown })
+      .createProjectionLayer
+  }
   try {
     await renderer.xr.setSession(session)
   } catch (fehler) {
     renderer.dispose()
     void session.end().catch(() => {})
     throw fehler
+  } finally {
+    if (versteckt && bindung && projektion) {
+      Object.defineProperty(bindung.prototype, "createProjectionLayer", projektion)
+    }
   }
   if (beendet) {
     renderer.dispose()
@@ -612,12 +634,13 @@ export async function starteBauenAr(
   // Ein einzelner Ausrutscher ist keine Meldung wert; bleibt es kaputt,
   // soll man sehen, woran es liegt, statt nur das Kamerabild.
   let fehlerZahl = 0
+  let ersterFehler = ""
   function meldeFehler(fehler: unknown) {
     fehlerZahl += 1
+    const text = fehler instanceof Error ? fehler.message : String(fehler)
+    if (!ersterFehler) ersterFehler = text
     if (fehlerZahl !== 3) return
-    meldungen.aufFehler?.(
-      fehler instanceof Error ? fehler.message : String(fehler),
-    )
+    meldungen.aufFehler?.(text)
   }
 
   // Fehler in three selbst, vor unserem Bild-Rückruf, kommen nur hier an
@@ -626,6 +649,62 @@ export async function starteBauenAr(
   }
   window.addEventListener("error", aufFensterFehler)
 
+  // Shader-Fehler meldet three nur über console.error — mitlesen
+  const konsoleFehler = console.error
+  const liesKonsole = (...teile: unknown[]) => {
+    if (!ersterFehler) ersterFehler = `Konsole: ${teile.map(String).join(" ")}`
+    konsoleFehler.apply(console, teile)
+  }
+  console.error = liesKonsole
+
+  let bilder = 0
+  let takt = 0
+  const glFehler = new Set<number>()
+  const chrome = /Chrome\/(\d+)/.exec(navigator.userAgent)?.[1] ?? "?"
+  function zeigeDiagnose() {
+    const feld = optionen.diagnose
+    if (!feld) return
+    const gl = renderer.getContext()
+    for (let i = 0; i < 4; i++) {
+      const code = gl.getError()
+      if (!code) break
+      glFehler.add(code)
+    }
+    const schicht = renderer.xr.getBaseLayer() as {
+      textureWidth?: number
+      textureHeight?: number
+      framebufferWidth?: number
+      framebufferHeight?: number
+    } | null
+    const art = !schicht
+      ? "keine Ebene"
+      : "textureWidth" in schicht
+        ? "Projektion"
+        : "Basis"
+    const kameraPos = new THREE.Vector3().setFromMatrixPosition(
+      xrSicht().matrixWorld,
+    )
+    const abstand = (p: { x: number; y: number; z: number }) =>
+      Math.hypot(p.x - kameraPos.x, p.y - kameraPos.y, p.z - kameraPos.z).toFixed(1)
+    feld.textContent = [
+      `XR ${art} ${schicht?.textureWidth ?? schicht?.framebufferWidth ?? 0}×${
+        schicht?.textureHeight ?? schicht?.framebufferHeight ?? 0
+      }${projektion ? "" : " (ohne Layers)"}`,
+      `Chrome ${chrome}`,
+      `Bild ${bilder}`,
+      `Kamera ${kameraPos.y.toFixed(2)} m`,
+      ebene
+        ? `Platte ${abstand(ebene.ursprung)} m`
+        : flaechenTreffer
+          ? `Ring ${abstand(flaechenTreffer)} m`
+          : "suche Boden",
+      glFehler.size ? `GL-Fehler ${[...glFehler].join(",")}` : "",
+      ersterFehler ? `Fehler: ${ersterFehler.slice(0, 90)}` : "keine Fehler",
+    ]
+      .filter(Boolean)
+      .join(" · ")
+  }
+
   let letzteBloeckeListe: GesetzterBlock[] | null = null
   let zuletzt = performance.now()
   renderer.setAnimationLoop((zeit, frame) => {
@@ -633,8 +712,16 @@ export async function starteBauenAr(
     // an — das Bild würde für immer einfrieren. Darum alles abfangen.
     try {
       zeichneBild(zeit, frame)
+      bilder += 1
     } catch (fehler) {
       meldeFehler(fehler)
+    }
+    if (takt++ % 15 === 0) {
+      try {
+        zeigeDiagnose()
+      } catch {
+        // Die Anzeige darf AR nie selbst kippen
+      }
     }
   })
 
@@ -755,6 +842,7 @@ export async function starteBauenAr(
     overlay.removeEventListener("beforexrselect", aufVorXrTipp)
     session.removeEventListener("select", aufXrTipp)
     window.removeEventListener("error", aufFensterFehler)
+    if (console.error === liesKonsole) console.error = konsoleFehler
     renderer.setAnimationLoop(null)
     try {
       hitQuelle?.cancel()

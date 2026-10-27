@@ -33,6 +33,7 @@ export function BauenPlatte() {
   const platte = useRef<HTMLCanvasElement>(null)
   const arCanvas = useRef<HTMLCanvasElement>(null)
   const overlay = useRef<HTMLDivElement>(null)
+  const diagnose = useRef<HTMLParagraphElement>(null)
   const sitzung = useRef<{ beenden: () => void } | null>(null)
   const { slots, inventar, setzeSlots } = useInventar()
   const { bloecke, setze, nimmWeg, ersetze, setzeAn } = useBauen()
@@ -353,7 +354,15 @@ export function BauenPlatte() {
             setHinweis("Boden erkannt — tippe, die Platte kommt zum grünen Ring."),
           aufFehler: (text) => setHinweis(`AR-Fehler: ${text.slice(0, 90)}`),
         },
-        { lebensgross },
+        {
+          lebensgross,
+          // ?xr=projektion schaltet zum Vergleich auf WebXR-Layers
+          xrEbene:
+            new URLSearchParams(window.location.search).get("xr") === "projektion"
+              ? "projektion"
+              : "basis",
+          diagnose: diagnose.current,
+        },
       )
       setArStatus("an")
       spieleHaptik("ar")
@@ -388,6 +397,7 @@ export function BauenPlatte() {
         }
       />
       <div ref={overlay} className="mc-ar-overlay">
+        <p ref={diagnose} className="mc-ar-diagnose" aria-hidden="true" />
         <div className="mc-ar-hud">
         <h1 className="mc-title">Bauen</h1>
         <p
