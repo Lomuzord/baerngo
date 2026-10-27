@@ -6,6 +6,7 @@ import {
   kannSceneViewer,
   modelViewerArModi,
   ndcVonViewport,
+  plattenOrtOhneFlaeche,
   sceneViewerUrl,
   xrViewportFeld,
   webXrFeatures,
@@ -52,6 +53,58 @@ describe("ndcVonViewport", () => {
       width: 80,
       height: 80,
     })
+  })
+})
+
+describe("plattenOrtOhneFlaeche", () => {
+  const kamera = { x: 0, y: 1.5, z: 0 }
+  const richtung = (y: number, z: number) => {
+    const l = Math.hypot(y, z)
+    return { x: 0, y: y / l, z: z / l }
+  }
+
+  it("keeps the tapped floor point when it is within reach", () => {
+    const treffer = { x: 0, y: 0, z: -1.5 }
+    expect(plattenOrtOhneFlaeche(kamera, richtung(-1, -1), treffer, false)).toBe(
+      treffer,
+    )
+  })
+
+  it("pulls a far floor hit from a nearly level phone back into view", () => {
+    const ort = plattenOrtOhneFlaeche(
+      kamera,
+      richtung(-0.05, -1),
+      { x: 0, y: 0, z: -30 },
+      false,
+    )
+    expect(ort).toEqual({ x: 0, y: 0, z: -3 })
+    expect(
+      plattenOrtOhneFlaeche(kamera, richtung(-0.05, -1), null, true).z,
+    ).toBeCloseTo(-4)
+  })
+
+  it("still places the plate when the phone points level or upwards", () => {
+    const ort = plattenOrtOhneFlaeche(kamera, richtung(0.2, -1), null, false)
+    expect(ort.y).toBe(0)
+    expect(ort.z).toBeCloseTo(-3)
+  })
+
+  it("assumes chest height when local-floor sits at the phone", () => {
+    const ort = plattenOrtOhneFlaeche(
+      { x: 1, y: 0.1, z: 2 },
+      richtung(-1, -1),
+      { x: 1, y: 0, z: 1.9 },
+      false,
+    )
+    expect(ort.y).toBeCloseTo(-1.2)
+    expect(ort.x).toBeCloseTo(1)
+    expect(ort.z).toBeCloseTo(2 - 1.3)
+  })
+
+  it("puts the plate straight below when looking down", () => {
+    expect(
+      plattenOrtOhneFlaeche(kamera, { x: 0, y: -1, z: 0 }, null, false),
+    ).toEqual({ x: 0, y: 0, z: 0 })
   })
 })
 

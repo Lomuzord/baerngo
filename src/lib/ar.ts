@@ -55,6 +55,45 @@ export function xrViewportFeld(vp?: {
   return { x: vp.x, y: vp.y, width, height }
 }
 
+type Punkt3 = { x: number; y: number; z: number }
+
+// Wohin die Platte kommt, solange ARCore keine Fläche erkannt hat. Ein
+// Tipp muss trotzdem etwas legen — aber nie ausser Sicht: Hält man das
+// Handy fast waagrecht (z. B. zum Beamer), trifft der Strahl den Boden
+// erst Dutzende Meter weiter, und die Platte wäre unsichtbar klein.
+export function plattenOrtOhneFlaeche(
+  kamera: Punkt3,
+  blick: Punkt3,
+  bodenTreffer: Punkt3 | null,
+  lebensgross: boolean,
+): Punkt3 {
+  const reichweite = lebensgross ? 4 : 3
+  // "local-floor" legt y = 0 auf den Boden. Liegt das nicht deutlich
+  // unter dem Handy, taugt die Schätzung nicht: Handy in Brusthöhe.
+  const bodenOk = kamera.y > 0.5
+  if (
+    bodenTreffer &&
+    bodenOk &&
+    Math.hypot(bodenTreffer.x - kamera.x, bodenTreffer.z - kamera.z) <=
+      reichweite
+  ) {
+    return bodenTreffer
+  }
+  const bodenY = bodenOk ? 0 : kamera.y - 1.3
+  const laenge = Math.hypot(blick.x, blick.z)
+  if (laenge < 1e-6) return { x: kamera.x, y: bodenY, z: kamera.z }
+  // Dort, wo der Blick den Boden trifft, höchstens in Reichweite.
+  const weite =
+    blick.y < 0
+      ? Math.min(reichweite, ((kamera.y - bodenY) / -blick.y) * laenge)
+      : reichweite
+  return {
+    x: kamera.x + (blick.x / laenge) * weite,
+    y: bodenY,
+    z: kamera.z + (blick.z / laenge) * weite,
+  }
+}
+
 export function sceneViewerUrl(gltfUrl: string, titel: string): string {
   const datei = encodeURIComponent(gltfUrl)
   const name = encodeURIComponent(titel)

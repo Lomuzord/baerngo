@@ -5,6 +5,7 @@ import {
 } from "@/lib/abbauen"
 import {
   ndcVonViewport,
+  plattenOrtOhneFlaeche,
   webXrFeatures,
   webXrModus,
   xrViewportFeld,
@@ -53,6 +54,10 @@ export type ArSteuerung = {
 export type ArMeldungen = {
   aufPlatte?: () => void
   aufEnde?: () => void
+  // ARCore hat zum ersten Mal eine Fläche erkannt (grüner Ring sichtbar)
+  aufFlaeche?: () => void
+  // Erster Fehler der Sitzung im Klartext — sonst scheitert AR stumm
+  aufFehler?: (text: string) => void
 }
 
 export type ArOptionen = {
@@ -148,6 +153,7 @@ export async function starteBauenAr(
     throw new Error("AR-Sitzung wurde schon beendet")
   }
   let flaechenTreffer: { x: number; y: number; z: number } | null = null
+  let flaecheGemeldet = false
 
   const szene = new THREE.Scene()
   const kamera = new THREE.PerspectiveCamera()
@@ -195,7 +201,7 @@ export async function starteBauenAr(
   let platteMesh: InstanceType<typeof THREE.Mesh> | null = null
   let zeigerBild: { x: number; y: number } | null = null
 
-  async function sperreEbene(pose: { x: number; y: number; z: number }) {
+  function sperreEbene(pose: { x: number; y: number; z: number }) {
     if (ebene) return
     // Lebensgross: Welt auf Fusshöhe verankern — "local-floor" legt
     // y=0 auf den echten Boden, so steht man selbst im Bauwerk.
@@ -213,19 +219,28 @@ export async function starteBauenAr(
     letzteBloeckeListe = null
     const seite = plattenSeiteMeter(kante)
     const dicke = kante * 0.125
-    const [gras, holz] = await Promise.all([
-      materialFuerBlock(THREE, "gras"),
-      materialFuerBlock(THREE, "holz"),
-    ])
+    // Die Platte steht sofort, erst einfarbig — die Texturen kommen
+    // nach. Auf sie zu warten liess die Platte bei langsamem Netz aus.
     const rahmen = new THREE.Mesh(
       new THREE.BoxGeometry(seite + kante * 0.5, dicke * 1.5, seite + kante * 0.5),
-      holz,
+      new THREE.MeshStandardMaterial({ color: 0x9c7a48 }),
     )
     rahmen.position.set(pose.x, y - dicke, pose.z)
     const platte = new THREE.Mesh(
       new THREE.BoxGeometry(seite, dicke, seite),
-      gras,
+      new THREE.MeshStandardMaterial({ color: 0x5b8c3a }),
     )
+    void Promise.all([
+      materialFuerBlock(THREE, "gras"),
+      materialFuerBlock(THREE, "holz"),
+    ])
+      .then(([gras, holz]) => {
+        platte.material = gras
+        rahmen.material = holz
+      })
+      .catch(() => {
+        // Einfarbig bleibt die Platte trotzdem benutzbar
+      })
     platte.position.set(pose.x, y, pose.z)
     platteMesh = platte
     platte.userData.platte = true
@@ -364,6 +379,22 @@ export async function starteBauenAr(
     return teil
   }
 
+  // Ohne erkannte Fläche: Platte dorthin, wo das Handy hinschaut, auf
+  // den geschätzten Boden und in Sichtweite.
+  function platteOhneFlaeche(bodenTreffer: {
+    x: number
+    y: number
+    z: number
+  } | null) {
+    const sicht = xrSicht()
+    return plattenOrtOhneFlaeche(
+      new THREE.Vector3().setFromMatrixPosition(sicht.matrixWorld),
+      new THREE.Vector3(0, 0, -1).transformDirection(sicht.matrixWorld),
+      bodenTreffer,
+      lebensgross,
+    )
+  }
+
   function trefferBeiBildschirm(clientX: number, clientY: number) {
     const leinwand = renderer.domElement
     const box = leinwand.getBoundingClientRect()
@@ -489,10 +520,12 @@ export async function starteBauenAr(
     zeigerBild = { x: event.clientX, y: event.clientY }
     const hit = trefferBeiBildschirm(event.clientX, event.clientY)
     if (!ebene) {
-      const ziel =
+      sperreEbene(
         flaechenTreffer ??
-        (hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null)
-      if (ziel) void sperreEbene(ziel)
+          platteOhneFlaeche(
+            hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null,
+          ),
+      )
     }
     zielZelle = hit && ebene ? zelleFuerTreffer(hit) : null
     zielBlockId = hit?.blockId ?? null
@@ -556,10 +589,42 @@ export async function starteBauenAr(
     endeHalten()
   }
 
+  // Rückfall, falls kein DOM-Tipp ankommt (Overlay vom Gerät nicht
+  // freigegeben): der XR-Tipp auf den Bildschirm legt die Platte.
+  function aufXrTipp() {
+    if (ebene || xrHalten) return
+    ebeneBeimDruck = false
+    sperreEbene(flaechenTreffer ?? platteOhneFlaeche(null))
+  }
+
+  // Knöpfe und Hotbar sind keine XR-Tipps
+  function aufVorXrTipp(event: Event) {
+    if (istHud(event)) event.preventDefault()
+  }
+
   overlay.addEventListener("pointerdown", aufOverlayDown)
   overlay.addEventListener("pointermove", aufOverlayMove)
   overlay.addEventListener("pointerup", aufOverlayUp)
   overlay.addEventListener("pointercancel", aufOverlayUp)
+  overlay.addEventListener("beforexrselect", aufVorXrTipp)
+  session.addEventListener("select", aufXrTipp)
+
+  // Ein einzelner Ausrutscher ist keine Meldung wert; bleibt es kaputt,
+  // soll man sehen, woran es liegt, statt nur das Kamerabild.
+  let fehlerZahl = 0
+  function meldeFehler(fehler: unknown) {
+    fehlerZahl += 1
+    if (fehlerZahl !== 3) return
+    meldungen.aufFehler?.(
+      fehler instanceof Error ? fehler.message : String(fehler),
+    )
+  }
+
+  // Fehler in three selbst, vor unserem Bild-Rückruf, kommen nur hier an
+  function aufFensterFehler(event: ErrorEvent) {
+    if (event.error) meldeFehler(event.error)
+  }
+  window.addEventListener("error", aufFensterFehler)
 
   let letzteBloeckeListe: GesetzterBlock[] | null = null
   let zuletzt = performance.now()
@@ -568,8 +633,8 @@ export async function starteBauenAr(
     // an — das Bild würde für immer einfrieren. Darum alles abfangen.
     try {
       zeichneBild(zeit, frame)
-    } catch {
-      // Nichts tun: das nächste Bild bekommt eine neue Chance
+    } catch (fehler) {
+      meldeFehler(fehler)
     }
   })
 
@@ -592,6 +657,10 @@ export async function starteBauenAr(
           flaechenTreffer.z,
         )
         zielring.visible = true
+        if (!flaecheGemeldet) {
+          flaecheGemeldet = true
+          meldungen.aufFlaeche?.()
+        }
       } else {
         flaechenTreffer = null
         zielring.visible = false
@@ -622,10 +691,12 @@ export async function starteBauenAr(
     if (zeigerBild) {
       const hit = trefferBeiBildschirm(zeigerBild.x, zeigerBild.y)
       if (!ebene) {
-        const ziel =
+        sperreEbene(
           flaechenTreffer ??
-          (hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null)
-        if (ziel) void sperreEbene(ziel)
+            platteOhneFlaeche(
+              hit ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null,
+            ),
+        )
       }
       const aktion = aktionFuerHand(steuerung.wahl())
       if (ebene && hit) {
@@ -681,6 +752,9 @@ export async function starteBauenAr(
     overlay.removeEventListener("pointermove", aufOverlayMove)
     overlay.removeEventListener("pointerup", aufOverlayUp)
     overlay.removeEventListener("pointercancel", aufOverlayUp)
+    overlay.removeEventListener("beforexrselect", aufVorXrTipp)
+    session.removeEventListener("select", aufXrTipp)
+    window.removeEventListener("error", aufFensterFehler)
     renderer.setAnimationLoop(null)
     try {
       hitQuelle?.cancel()

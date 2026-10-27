@@ -349,15 +349,16 @@ export function BauenPlatte() {
             setArStatus("bereit")
             setHinweis("AR beendet. Weiter auf der Tischplatte.")
           },
+          aufFlaeche: () =>
+            setHinweis("Boden erkannt — tippe, die Platte kommt zum grünen Ring."),
+          aufFehler: (text) => setHinweis(`AR-Fehler: ${text.slice(0, 90)}`),
         },
         { lebensgross },
       )
       setArStatus("an")
       spieleHaptik("ar")
       setHinweis(
-        lebensgross
-          ? "Richte den grünen Ring auf den Boden und tippe — die Welt startet in Lebensgrösse an deinen Füssen."
-          : "Richte den grünen Ring auf Boden oder Tisch und tippe — dort landet die Platte.",
+        "Handy langsam über den Boden schwenken, bis der grüne Ring kommt, dann tippen. Ohne Ring legt ein Tipp die Platte vor dich.",
       )
     } catch {
       setArStatus("bereit")
